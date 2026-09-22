@@ -1,12 +1,12 @@
-const CACHE = "template-offline-v1";
+const CACHE = "mrtguessr-v1";
 
 const ASSETS = [
   "/",
   "/index.html",
   "/style.css",
   "/script.js",
-  "/templateicon1-192.png",
-  "/templateicon1-512.png",
+  "/SNG-192.png",
+  "/SNG-512.png",
   "/favicon.ico",
   "/manifest.json"
 ];
