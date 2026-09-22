@@ -28,11 +28,6 @@ export function colorsFor(lineCodes) {
   return [...seen.values()];
 }
 
-// Tier 2: code prefixes as printed on the station, "CG" and "STC" included.
-export function prefixesFor(stationCodes) {
-  return [...new Set(stationCodes.map((c) => c.match(/^[A-Z]+/)?.[0]).filter(Boolean))];
-}
-
 export function lineNamesFor(lineCodes) {
   return lineCodes.map((c) => LINES[c]?.name).filter(Boolean);
 }

@@ -21,9 +21,9 @@ A round is only visible to the key that started it.
 | `POST /api/round/hint` | `round_id, client_key` | `penalty` plus the round view |
 | `POST /api/round/state` | `round_id, client_key` | the round view, with due letters revealed |
 | `POST /api/round/giveup` | `round_id, client_key` | the round view, with `answer` |
-| `POST /api/leaderboard/submit` | `round_id, name` | `name, rank, best_score` |
+| `POST /api/leaderboard/submit` | `round_id, name` | `name, rank, best_score, total, rounds, total_rank` |
 | `POST /api/leaderboard/name` | `name` | `name`, cleaned, or a `400` saying why not |
-| `GET /api/leaderboard` | | `entries: [{ rank, name, score }]`, cached 30 s |
+| `GET /api/leaderboard` | `?board=best` (default) or `?board=total` | `board, entries`, cached 30 s |
 
 `state`, `giveup` and `name` are additions to the spec's list: clients poll
 `state` at `next_reveal_in` to show letters appearing, `giveup` lets a stuck
@@ -41,7 +41,7 @@ The round view:
   "line_color": "#d42e12",
   "hints": {
     "colors": [{ "hex": "#d42e12", "name": "red" }],
-    "code_prefixes": ["NS"],
+    "codes": ["NS19"],
     "line_names": ["North-South Line"]
   },
   "score": 880,
@@ -58,6 +58,19 @@ Errors are `{ "error": code, "message"? }` with a matching status: `400` bad
 input, `401` bad bot token, `404` no such round, `409` round over or no more
 hints, `410` round or submission expired, `429` rate limited.
 
+## Leaderboards
+
+Two boards over the same submissions, one row per name, names compared
+case-insensitively:
+
+| Board | Entries | Ranked by |
+|---|---|---|
+| `best` | `{ rank, name, score }` | the name's single best round; ties to whoever got it first |
+| `total` | `{ rank, name, total, rounds }` | every submitted round added up; ties to fewer rounds, then whoever got there first |
+
+Only submitted rounds count towards either, since a round has no name until
+it is submitted. Submit returns the name's place on both.
+
 ## Rules
 
 All in `_lib/game.js`.
@@ -66,7 +79,7 @@ All in `_lib/game.js`.
 |---|---|
 | Start | 1000 |
 | Tier 1, line colour | free, given with the round |
-| Tier 2, code prefix | -100 |
+| Tier 2, station codes in full (`NS19`; every code at an interchange) | -100 |
 | Tier 3, position on a blank map | -150 |
 | Tier 4, Chinese name | -200 |
 | Tier 5, one more letter | -60 each |

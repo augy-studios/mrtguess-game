@@ -9,7 +9,7 @@ COMMANDS = [
     ("play", "Start a new round."),
     ("hint", "Buy the next hint for the round you are playing."),
     ("giveup", "End the round and see the answer."),
-    ("leaderboard", "The top scores, one per name."),
+    ("leaderboard", "Best scores and total points, one row per name."),
     ("settings", "Your leaderboard name, hint checks, chat tidying and map colours."),
 ]
 

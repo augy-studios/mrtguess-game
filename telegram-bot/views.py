@@ -30,10 +30,15 @@ def hint_lines(view: dict) -> list[dict]:
     lines = []
     colours = and_list([c["name"] for c in hints["colors"]])
     lines.append(r.para(f"Line colour: **{r.escape_md(colours)}**", f"Line colour: {colours}"))
-    if "code_prefixes" in hints:
-        codes = ", ".join(hints["code_prefixes"])
-        names = and_list(hints.get("line_names", []))
-        lines.append(r.para(f"Code: **{r.escape_md(codes)}**, {r.escape_md(names)}", f"Code: {codes}, {names}"))
+    if "codes" in hints:
+        codes = ", ".join(hints["codes"])
+        label = "Codes" if len(hints["codes"]) > 1 else "Code"
+        lines.append(r.para(f"{label}: **{r.escape_md(codes)}**", f"{label}: {codes}"))
+        line_names = hints.get("line_names", [])
+        if line_names:
+            names = and_list(line_names)
+            label = "Lines" if len(line_names) > 1 else "Line"
+            lines.append(r.para(f"{label}: {r.escape_md(names)}", f"{label}: {names}"))
     if "position" in hints:
         lines.append(r.para("Map: in the picture sent with it", "Map: in the picture sent with it"))
     if "name_zh" in hints:
@@ -84,12 +89,18 @@ def answer_lines(answer: dict) -> dict:
 
 
 def submitted_line(result: dict) -> dict:
+    """Where the name now stands on both boards."""
     name = result["name"]
-    return r.para(
-        f"Added as **{r.escape_md(name)}**. That name is ranked **{result['rank']}**, "
-        f"with a best of **{result['best_score']}**.",
-        f"Added as {name}. That name is ranked {result['rank']}, with a best of {result['best_score']}.",
-    )
+    rounds = result.get("rounds") or 1
+    plural = "round" if rounds == 1 else "rounds"
+    md = [f"Added as **{r.escape_md(name)}**."]
+    plain = [f"Added as {name}."]
+    md.append(f"Best score **{result['best_score']}**, ranked **{result['rank']}**.")
+    plain.append(f"Best score {result['best_score']}, ranked {result['rank']}.")
+    if result.get("total") is not None:
+        md.append(f"Total **{result['total']}** over {rounds} {plural}, ranked **{result['total_rank']}**.")
+        plain.append(f"Total {result['total']} over {rounds} {plural}, ranked {result['total_rank']}.")
+    return r.para(" ".join(md), " ".join(plain))
 
 
 def solved_card(view: dict, button, user_id: int, saved_name: str | None = None,
@@ -179,14 +190,28 @@ def gave_up_card(view: dict, button, user_id: int):
     return rich, [[button("play", "Play again", user_id=user_id)]]
 
 
-def leaderboard_card(entries: list[dict], button, user_id: int, limit: int = 10):
-    parts = [r.heading("Leaderboard")]
+def leaderboard_card(board: str, entries: list[dict], button, user_id: int, limit: int = 10):
+    """Either board, with a button that swaps to the other in place."""
+    if board == "total":
+        parts = [r.heading("Leaderboard: total points")]
+        table = r.table(
+            ["#", "Name", "Total", "Rounds"],
+            [[e["rank"], e["name"], e["total"], e["rounds"]] for e in entries[:limit]],
+        )
+        about = "Every round added to the leaderboard under a name, scores added up."
+        switch = button("leaderboard", "Best scores", board="best", user_id=user_id)
+    else:
+        parts = [r.heading("Leaderboard: best score")]
+        table = r.table(["#", "Name", "Score"], [[e["rank"], e["name"], e["score"]] for e in entries[:limit]])
+        about = "Each name's single best round."
+        switch = button("leaderboard", "Total points", board="total", user_id=user_id)
+
     if entries:
-        parts.append(r.table(["#", "Name", "Score"], [[e["rank"], e["name"], e["score"]] for e in entries[:limit]]))
-        parts.append(r.text("Each name shows its best score. Anyone who picks the same name shares its entry."))
+        parts.append(table)
+        parts.append(r.text(f"{about} Anyone who picks the same name shares its entry."))
     else:
         parts.append(r.text("No scores yet. Solve a round and add yours."))
-    return r.join(parts), [[button("play", "Play", user_id=user_id)]]
+    return r.join(parts), [[switch, button("play", "Play", user_id=user_id)]]
 
 
 def start_card(button, user_id: int, donation_url: str | None):
@@ -211,7 +236,7 @@ def start_card(button, user_id: int, donation_url: str | None):
                         "The card updates in place."
                     ),
                     r.text(
-                        "Stuck? Press the hint button or send /hint. Hints come in a fixed order: the line code, "
+                        "Stuck? Press the hint button or send /hint. Hints come in a fixed order: the station code, such as NS19, "
                         "a map with the station ringed, the Chinese name, then one letter at a time."
                     ),
                     r.text(
@@ -226,7 +251,7 @@ def start_card(button, user_id: int, donation_url: str | None):
                 [
                     ["Every round starts at", "1000"],
                     ["A letter, from the clock or a hint", "-60"],
-                    ["Line code hint", "-100"],
+                    ["Station code hint", "-100"],
                     ["Map hint", "-150"],
                     ["Chinese name hint", "-200"],
                     ["Wrong guess", "-20"],
@@ -237,8 +262,9 @@ def start_card(button, user_id: int, donation_url: str | None):
             r.heading("Leaderboard", 2),
             r.text(
                 "Solve a round, press Add to leaderboard, and send a name of up to 20 characters. "
-                "Each solved round can go on once, within an hour of starting it. The board shows each name's "
-                "best score. Names are not accounts: anyone who picks the same name shares its entry."
+                "Each solved round can go on once, within an hour of starting it. There are two boards: "
+                "best score, each name's single best round, and total points, every round under a name added "
+                "up. Names are not accounts: anyone who picks the same name shares its entry."
             ),
             r.text(
                 "The last name you used is remembered, so next time adding a round is one tap. "

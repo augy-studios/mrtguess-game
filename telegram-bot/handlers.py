@@ -175,9 +175,15 @@ class Game:
         view = await self.api.give_up(live["user_id"], live["round_id"])
         await self.finish(chat_id, live, view)
 
-    async def leaderboard(self, chat_id: int, user_id: int) -> None:
-        data = await self.api.leaderboard()
-        await self.send(chat_id, views.leaderboard_card(data.get("entries", []), self.button, user_id))
+    async def leaderboard(self, chat_id: int, user_id: int, board: str = "best", event=None) -> None:
+        """A new leaderboard message, or from its own switch button, the same
+        message redrawn as the other board."""
+        data = await self.api.leaderboard(board)
+        rich, buttons = views.leaderboard_card(board, data.get("entries", []), self.button, user_id)
+        if event is not None:
+            await r.edit_rich_message(self.client, event, rich, buttons)
+        else:
+            await self.send(chat_id, (rich, buttons))
 
     # Names.
 
@@ -306,6 +312,9 @@ class Game:
         await event.answer()
         if kind == "play":
             await self.run_locked(chat_id, lambda: self.start_round(chat_id, user_id))
+        elif kind == "leaderboard" and payload.get("board") in ("best", "total"):
+            board = payload["board"]
+            await self.run_locked(chat_id, lambda: self.leaderboard(chat_id, user_id, board, event))
         elif kind == "leaderboard":
             await self.run_locked(chat_id, lambda: self.leaderboard(chat_id, user_id))
         elif kind == "submit" and payload.get("name"):

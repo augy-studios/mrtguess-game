@@ -3,7 +3,7 @@
 //
 // Hint ladder, all derived from the station row:
 //   1  line colour          given with the round, free
-//   2  station code prefix  -100
+//   2  station codes        -100, in full: NS19, or NS24 NE6 CC1
 //   3  position on a map    -150
 //   4  Chinese name         -200
 //   5  one more letter      -60 each, until half the letters show
@@ -15,7 +15,7 @@
 import { randomInt } from "node:crypto";
 import { rest } from "./supabase.js";
 import { HttpError } from "./http.js";
-import { colorsFor, lineNamesFor, prefixesFor } from "./lines.js";
+import { colorsFor, lineNamesFor } from "./lines.js";
 
 export const START_SCORE = 1000;
 export const REVEAL_EVERY_MS = 15_000;
@@ -161,7 +161,7 @@ export function view(round, station, now = Date.now()) {
   const over = finished(round);
   const hints = { colors: colorsFor(station.lines) };
   if (tier >= 2) {
-    hints.code_prefixes = prefixesFor(station.codes);
+    hints.codes = station.codes;
     hints.line_names = lineNamesFor(station.lines);
   }
   // Rounded to about 100 m: enough for a dot on a map.
