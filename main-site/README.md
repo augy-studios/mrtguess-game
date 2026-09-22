@@ -29,6 +29,9 @@ Bump `VERSION` in `sw.js` on every change to anything in this directory.
 
 ## Environment variables (Vercel)
 
+Documented in `.env.example`. `.vercelignore` keeps every env file out of
+deployments, since anything in this directory would otherwise be served.
+
 | Variable | Used for |
 |---|---|
 | `SUPABASE_URL` | The shared uwuapps project. Already set. |
