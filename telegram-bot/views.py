@@ -83,20 +83,86 @@ def answer_lines(answer: dict) -> dict:
     return r.join([r.text(alt) if alt else None, r.para(f"`{codes}`", codes) if codes else None], "\n")
 
 
-def solved_card(view: dict, button, user_id: int):
+def submitted_line(result: dict) -> dict:
+    name = result["name"]
+    return r.para(
+        f"Added as **{r.escape_md(name)}**. That name is ranked **{result['rank']}**, "
+        f"with a best of **{result['best_score']}**.",
+        f"Added as {name}. That name is ranked {result['rank']}, with a best of {result['best_score']}.",
+    )
+
+
+def solved_card(view: dict, button, user_id: int, saved_name: str | None = None,
+                submitted: dict | None = None, note: str | None = None):
+    """Three endings: already added (automatically), one tap under the saved
+    name, or asked for a name."""
     answer = view["answer"]
     rich = r.join(
         [
             r.heading(answer["name_en"]),
             answer_lines(answer),
             r.para(f"Solved for **{view['score']}** points.", f"Solved for {view['score']} points."),
+            submitted_line(submitted) if submitted else None,
+            r.para(f"*{r.escape_md(note)}*", note) if note else None,
         ]
     )
-    buttons = [
-        [
-            button("submit", "Add to leaderboard", round_id=view["round_id"], user_id=user_id),
-            button("play", "Play again", user_id=user_id),
+    play = button("play", "Play again", user_id=user_id)
+    rid = view["round_id"]
+    if submitted:
+        buttons = [[button("leaderboard", "Leaderboard", user_id=user_id), play]]
+    elif saved_name:
+        buttons = [
+            [
+                button("submit", f"Add as {saved_name}", round_id=rid, user_id=user_id, name=saved_name),
+                button("submit", "Another name", round_id=rid, user_id=user_id),
+            ],
+            [play],
         ]
+    else:
+        buttons = [[button("submit", "Add to leaderboard", round_id=rid, user_id=user_id), play]]
+    return rich, buttons
+
+
+ON_OFF = {True: "On", False: "Off"}
+
+
+def settings_card(settings: dict, button, user_id: int, note: str | None = None):
+    name = settings["name"]
+    rich = r.join(
+        [
+            r.para(f"*{r.escape_md(note)}*", note) if note else None,
+            r.heading("Settings"),
+            r.table(
+                ["Setting", "Now"],
+                [
+                    ["Leaderboard name", name or "Not set"],
+                    ["Add solved rounds automatically", ON_OFF[settings["auto_submit"]]],
+                    ["Ask before buying a hint", ON_OFF[settings["confirm_hints"]]],
+                    ["Remove old round cards", ON_OFF[settings["tidy_chat"]]],
+                    ["Map hint colours", settings["map_style"].capitalize()],
+                ],
+            ),
+            r.text(
+                "The leaderboard name is filled in whenever you add a round, so it is always the last one you "
+                "used. With automatic adding on, every solved round goes on the leaderboard under it."
+            ),
+        ]
+    )
+
+    def toggle(key: str, label: str):
+        return [button("setting", f"{label}: {ON_OFF[settings[key]]}", key=key, user_id=user_id)]
+
+    name_row = [button("setname", "Change name" if name else "Set name", user_id=user_id)]
+    if name:
+        name_row.append(button("setting", "Clear name", key="name", user_id=user_id))
+    other_style = "dark" if settings["map_style"] == "light" else "light"
+    buttons = [
+        name_row,
+        toggle("auto_submit", "Add automatically"),
+        toggle("confirm_hints", "Ask before hints"),
+        toggle("tidy_chat", "Remove old cards"),
+        [button("setting", f"Map colours: {settings['map_style'].capitalize()}", key="map_style",
+                value=other_style, user_id=user_id)],
     ]
     return rich, buttons
 
@@ -174,13 +240,23 @@ def start_card(button, user_id: int, donation_url: str | None):
                 "Each solved round can go on once, within an hour of starting it. The board shows each name's "
                 "best score. Names are not accounts: anyone who picks the same name shares its entry."
             ),
+            r.text(
+                "The last name you used is remembered, so next time adding a round is one tap. "
+                "Change it, or have every solved round added automatically, in /settings."
+            ),
+            r.heading("Settings", 2),
+            r.text(
+                "/settings holds your leaderboard name, automatic adding, a check before each hint spends "
+                "points, whether old round cards are removed to keep the chat tidy, and light or dark map hints."
+            ),
             r.heading("Commands", 2),
             r.table(["Command", "What it does"], [[f"/{name}", description] for name, description in COMMANDS]),
             r.heading("About", 2),
             r.text(
                 "There is no account. Your rounds are kept against your Telegram user id so the game can find "
-                "them again, and rounds that never reach the leaderboard are deleted after two days. Only a name "
-                "you choose to submit is ever shown. Works in private chats only."
+                "them again, and rounds that never reach the leaderboard are deleted after two days. Your "
+                "settings, including your leaderboard name, are kept by the bot against the same id. Only a "
+                "name you choose to submit is ever shown. Works in private chats only."
             ),
         ]
     )

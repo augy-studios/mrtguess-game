@@ -22,11 +22,13 @@ A round is only visible to the key that started it.
 | `POST /api/round/state` | `round_id, client_key` | the round view, with due letters revealed |
 | `POST /api/round/giveup` | `round_id, client_key` | the round view, with `answer` |
 | `POST /api/leaderboard/submit` | `round_id, name` | `name, rank, best_score` |
+| `POST /api/leaderboard/name` | `name` | `name`, cleaned, or a `400` saying why not |
 | `GET /api/leaderboard` | | `entries: [{ rank, name, score }]`, cached 30 s |
 
-`state` and `giveup` are additions to the spec's list: clients poll `state`
-at `next_reveal_in` to show letters appearing, and `giveup` lets a stuck
-player learn the answer.
+`state`, `giveup` and `name` are additions to the spec's list: clients poll
+`state` at `next_reveal_in` to show letters appearing, `giveup` lets a stuck
+player learn the answer, and `name` lets a client check a name it wants to
+remember, such as the Telegram bot's saved leaderboard name.
 
 The round view:
 

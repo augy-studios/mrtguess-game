@@ -28,22 +28,35 @@ variable listed.
   the line colour, and buttons for the next hint and for giving up.
 - The card edits itself as the clock reveals a letter every 15 seconds.
 - Any message that is not a command is a guess. A wrong guess brings a fresh
-  card to the bottom of the chat and deletes the old one.
+  card to the bottom of the chat and deletes the old one (or, with old card
+  removal off, leaves it without buttons).
 - The map hint arrives as a picture: the network, no labels, a ring on the
   station.
 - A solved round offers "Add to leaderboard", which asks for a name in the
-  next message.
+  next message. The name is remembered, so later solves offer `Add as
+  NAME` in one tap, and "Another name".
+- `/settings` holds the leaderboard name and four switches, each redrawn in
+  place when pressed:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Leaderboard name | not set | Filled in by every successful submit; can be changed (checked by the API) or cleared. |
+| Add solved rounds automatically | off | Submits every solve under the saved name. Needs a name; clearing the name turns it off. |
+| Ask before buying a hint | off | A yes/no message with the cost before any hint spends points. |
+| Remove old round cards | on | Off leaves old cards in the chat without their buttons, instead of deleting them. |
+| Map hint colours | light | Dark draws the map on the site's dark background. |
 
 ## What lives where
 
 | | |
 |---|---|
 | Game state, scores, answers | The API, in Supabase. The bot has no Supabase key. |
-| Buttons, the live card per chat, name prompts | `bot.sqlite3`, local and gitignored. |
+| Buttons, the live card per chat, name prompts, settings | `bot.sqlite3`, local and gitignored. |
 
 Buttons carry an opaque id looked up in SQLite, so they keep working across
-restarts and cannot be forged. Losing `bot.sqlite3` costs only old buttons and
-the live card's updates, never a score.
+restarts and cannot be forged. Losing `bot.sqlite3` costs old buttons, the
+live card's updates and everyone's settings, never a score. Back it up with
+the rest of the VPS if the settings matter.
 
 ## Files
 
@@ -82,6 +95,11 @@ appear. There is no inline mode, so no inline results.
    then the Chinese name.
 5. Guess right: the answer card, with Add to leaderboard and Play again.
 6. Add to leaderboard, send a rude name (refused, asks again), then a good one.
-7. `/leaderboard`: a table.
-8. Restart the bot and press an old button: it still works.
-9. Start a second copy: refused with the first one's pid.
+7. Solve another: the card offers `Add as NAME`, with that name. Press it.
+8. `/settings`: turn on automatic adding and solve one more; the result card
+   says it was added. Turn on hint checks: a hint now asks first. Turn off
+   old card removal: a wrong guess leaves the old card, without buttons.
+   Switch the map to dark and buy a map hint.
+9. `/leaderboard`: a table.
+10. Restart the bot and press an old button: it still works.
+11. Start a second copy: refused with the first one's pid.

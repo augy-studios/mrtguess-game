@@ -145,6 +145,14 @@ async def edit_rich_message_at(client, peer, msg_id, reply, buttons=None):
             return
 
 
+async def strip_buttons(client, peer, msg_id) -> None:
+    """Remove a message's keyboard and leave its text, rich body included."""
+    try:
+        await client(functions.messages.EditMessageRequest(peer=peer, id=msg_id, reply_markup=_NO_BUTTONS))
+    except MessageNotModifiedError:
+        return
+
+
 async def edit_rich_message(client, event, reply, buttons=None):
     """Edit the message a CallbackQuery came from, regular chat or inline mode."""
     markup = client.build_reply_markup(buttons) if buttons else None

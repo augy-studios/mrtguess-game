@@ -18,8 +18,11 @@ LINE_COLOURS = {
     "NS": "#d42e12", "EW": "#009645", "NE": "#9900aa", "CC": "#fa9e0d", "DT": "#005ec4",
     "TE": "#9d5b25", "BP": "#748477", "SK": "#748477", "PG": "#748477",
 }
-BACKGROUND = "#e8f3e9"
-INK = "#121815"
+# Page background and ink from the site's light and dark themes.
+STYLES = {
+    "light": {"background": "#e8f3e9", "ink": "#121815"},
+    "dark": {"background": "#141c17", "ink": "#eef2ef"},
+}
 
 WIDTH = 1000
 PAD = 40
@@ -40,7 +43,8 @@ def _network(path: str):
     return lines, (min(lons), min(lats), max(lons), max(lats))
 
 
-def render(lines_geojson: Path, lat: float, lon: float) -> io.BytesIO:
+def render(lines_geojson: Path, lat: float, lon: float, style: str = "light") -> io.BytesIO:
+    colours = STYLES.get(style, STYLES["light"])
     lines, (x0, y0, x1, y1) = _network(str(lines_geojson))
     # Equirectangular, with longitude shrunk by cos(latitude): fine at 1.3 N.
     kx = math.cos(math.radians((y0 + y1) / 2))
@@ -54,7 +58,7 @@ def render(lines_geojson: Path, lat: float, lon: float) -> io.BytesIO:
             (PAD + (y1 - la) / span_y * (height - 2 * PAD)) * SCALE,
         )
 
-    img = Image.new("RGB", (WIDTH * SCALE, height * SCALE), BACKGROUND)
+    img = Image.new("RGB", (WIDTH * SCALE, height * SCALE), colours["background"])
     draw = ImageDraw.Draw(img)
     for code, part in lines:
         draw.line([xy(lo, la) for lo, la in part], fill=LINE_COLOURS.get(code, "#748477"), width=5 * SCALE, joint="curve")
@@ -62,9 +66,9 @@ def render(lines_geojson: Path, lat: float, lon: float) -> io.BytesIO:
     cx, cy = xy(lon, lat)
     for radius, width in ((34, 5), (18, 7)):
         rr = radius * SCALE
-        draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), outline=INK, width=width * SCALE)
+        draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), outline=colours["ink"], width=width * SCALE)
     rr = 6 * SCALE
-    draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=INK)
+    draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), fill=colours["ink"])
 
     img = img.resize((WIDTH, height), Image.LANCZOS)
     out = io.BytesIO()

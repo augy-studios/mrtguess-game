@@ -48,6 +48,7 @@ play - Start a new round.
 hint - Buy the next hint for the round you are playing.
 giveup - End the round and see the answer.
 leaderboard - The top scores, one per name.
+settings - Your leaderboard name, hint checks, chat tidying and map colours.
 ```
 
 The bot also registers this list itself at every startup, so this step only

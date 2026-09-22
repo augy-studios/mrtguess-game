@@ -1,8 +1,8 @@
 """Bot-local SQLite: the button registry, the live round card per chat for the
-reveal scheduler, and pending leaderboard name prompts.
+reveal scheduler, pending prompts, and each player's settings.
 
 No game state lives here. Scores, masks and answers are the API's; losing
-this file costs only buttons in old messages and the live card's updates.
+this file costs old buttons, the live card's updates, and saved settings.
 """
 
 from __future__ import annotations
@@ -32,11 +32,24 @@ create table if not exists live_rounds (
     last_score integer
 );
 create index if not exists live_rounds_tick on live_rounds (next_tick_at);
-create table if not exists name_prompts (
+-- A typed message the bot is waiting for. kind is 'submit' (a name for
+-- round_id) or 'setname' (a name for settings).
+create table if not exists prompts (
     chat_id integer primary key,
-    round_id text not null,
+    kind text not null,
+    round_id text,
     expires_at real not null
 );
+-- One row per Telegram user, created on first change. Missing means defaults.
+create table if not exists settings (
+    user_id integer primary key,
+    name text,
+    auto_submit integer not null default 0,
+    confirm_hints integer not null default 0,
+    tidy_chat integer not null default 1,
+    map_style text not null default 'light'
+);
+drop table if exists name_prompts;
 """
 
 
@@ -112,25 +125,63 @@ def next_tick(view: dict) -> float | None:
     return None if wait_ms is None else time.time() + wait_ms / 1000 + 0.4
 
 
-# Leaderboard name prompts.
+# Prompts: the next plain message is a name, not a guess.
 
 PROMPT_TTL_S = 10 * 60
 
 
-def set_prompt(conn, chat_id: int, round_id: str) -> None:
+def set_prompt(conn, chat_id: int, kind: str, round_id: str | None = None) -> None:
     conn.execute(
-        "insert or replace into name_prompts (chat_id, round_id, expires_at) values (?, ?, ?)",
-        (chat_id, round_id, time.time() + PROMPT_TTL_S),
+        "insert or replace into prompts (chat_id, kind, round_id, expires_at) values (?, ?, ?, ?)",
+        (chat_id, kind, round_id, time.time() + PROMPT_TTL_S),
     )
 
 
-def take_prompt(conn, chat_id: int) -> str | None:
-    row = conn.execute("select round_id, expires_at from name_prompts where chat_id = ?", (chat_id,)).fetchone()
+def get_prompt(conn, chat_id: int):
+    """The waiting prompt, or None. Left in place until the caller clears it,
+    so a refused name can be tried again."""
+    row = conn.execute("select kind, round_id, expires_at from prompts where chat_id = ?", (chat_id,)).fetchone()
     if not row or row["expires_at"] < time.time():
         clear_prompt(conn, chat_id)
         return None
-    return row["round_id"]
+    return row
 
 
 def clear_prompt(conn, chat_id: int) -> None:
-    conn.execute("delete from name_prompts where chat_id = ?", (chat_id,))
+    conn.execute("delete from prompts where chat_id = ?", (chat_id,))
+
+
+# Settings.
+
+DEFAULTS = {"name": None, "auto_submit": False, "confirm_hints": False, "tidy_chat": True, "map_style": "light"}
+_BOOLEANS = ("auto_submit", "confirm_hints", "tidy_chat")
+
+
+def get_settings(conn, user_id: int) -> dict:
+    row = conn.execute("select * from settings where user_id = ?", (user_id,)).fetchone()
+    if row is None:
+        return dict(DEFAULTS)
+    out = {key: row[key] for key in DEFAULTS}
+    for key in _BOOLEANS:
+        out[key] = bool(out[key])
+    return out
+
+
+def save_settings(conn, user_id: int, **changes) -> dict:
+    unknown = set(changes) - set(DEFAULTS)
+    if unknown:
+        raise ValueError(f"unknown settings: {unknown}")
+    current = get_settings(conn, user_id)
+    current.update(changes)
+    # Adding rounds automatically needs a name to add them under.
+    if not current["name"]:
+        current["auto_submit"] = False
+    conn.execute(
+        """insert into settings (user_id, name, auto_submit, confirm_hints, tidy_chat, map_style)
+           values (:user_id, :name, :auto_submit, :confirm_hints, :tidy_chat, :map_style)
+           on conflict (user_id) do update set name = excluded.name, auto_submit = excluded.auto_submit,
+             confirm_hints = excluded.confirm_hints, tidy_chat = excluded.tidy_chat,
+             map_style = excluded.map_style""",
+        {"user_id": user_id, **{k: int(v) if k in _BOOLEANS else v for k, v in current.items()}},
+    )
+    return current
