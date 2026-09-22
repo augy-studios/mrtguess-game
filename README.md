@@ -36,13 +36,13 @@ and `01-station-guess.md` files at the root are the specs this is built to.
 ## First setup
 
 1. Run every file in `migrations/`, in order, in the Supabase SQL editor.
-2. Seed the stations: `python scripts/seed_supabase.py` with `SUPABASE_URL`
-   and `SUPABASE_SERVICE_KEY` set (see `scripts/README.md`).
-3. On the Vercel project, add `BOT_API_TOKEN`: a long random string, for
+   `002` loads the stations; `python scripts/seed_supabase.py` does the same
+   if you would rather not paste it.
+2. On the Vercel project, add `BOT_API_TOKEN`: a long random string, for
    example from `openssl rand -hex 32`. `SUPABASE_URL` and
    `SUPABASE_SERVICE_KEY` are already there.
-4. Deploy `main-site`.
-5. Set up the Telegram bot: `telegram-bot/setup.md`.
+3. Deploy `main-site`.
+4. Set up the Telegram bot: `telegram-bot/setup.md`.
 
 ## Before every deploy
 

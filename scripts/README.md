@@ -5,7 +5,7 @@ dependencies; the seed needs Python 3.10 or later and no dependencies.
 
 | Script | What it does |
 |---|---|
-| `seed_supabase.py` | Loads `main-site/data/stations.geojson` into `mrtguessr_stations`. Upserts on the English name, so it is safe to run again. `--dry-run` prints what it would send. |
+| `seed_supabase.py` | Loads `main-site/data/stations.geojson` into `mrtguessr_stations`. Upserts on the English name, so it is safe to run again. `--dry-run` prints what it would send; `--sql` writes the same rows to `migrations/002_mrtguessr_seed_stations.sql` instead. |
 | `vendor-sgraildata.mjs <clone>` | Rebuilds `main-site/data/` from a local sgraildata clone. |
 | `check-sw.mjs` | Fails if `skipWaiting()` or `clients.claim()` appear outside the service worker's message handler, or other update bar rules break. |
 | `check-precache.mjs` | Fails if a `PRECACHE` entry is missing on disk, or a module or data file is not precached. |
