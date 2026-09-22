@@ -1,0 +1,16 @@
+# Bot-local state: the Telegram session, SQLite, the instance lock.
+*.session
+*.session-journal
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.lock
+
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/

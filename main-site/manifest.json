@@ -1,16 +1,18 @@
 {
     "name": "MRT Station Guesser by UwU Apps",
-    "short_name": "UwU MRT Station Guesser",
-    "description": "A simple mrtguessr app; view live mrtguessr at a glance!",
+    "short_name": "MRT Guesser",
+    "description": "Guess the Singapore MRT or LRT station from a masked name. Letters reveal as the clock runs, and every hint costs points.",
     "icons": [{
-            "src": "SNG-192.png",
+            "src": "/SNG-192.png",
             "type": "image/png",
-            "sizes": "192x192"
+            "sizes": "192x192",
+            "purpose": "any"
         },
         {
-            "src": "SNG-512.png",
+            "src": "/SNG-512.png",
             "type": "image/png",
-            "sizes": "512x512"
+            "sizes": "512x512",
+            "purpose": "any"
         }
     ],
     "screenshots": [{
@@ -27,8 +29,8 @@
         }
     ],
     "start_url": "/",
-    "theme_color": "#cfc",
-    "background_color": "#cfc",
+    "theme_color": "#ccffcc",
+    "background_color": "#ccffcc",
     "display": "standalone",
     "display_override": ["fullscreen", "minimal-ui", "window-controls-overlay"],
     "orientation": "any",
@@ -37,8 +39,8 @@
     "scope": "/",
     "lang": "en",
     "categories": [
+        "games",
         "entertainment",
-        "lifestyle",
-        "utilities"
+        "travel"
     ]
 }

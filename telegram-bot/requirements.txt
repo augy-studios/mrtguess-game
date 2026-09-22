@@ -1,0 +1,9 @@
+# Telethon 1.44 is the first release whose TL layer carries rich_message on
+# the send and edit requests (reply.py). 2.x is a different API.
+telethon>=1.44,<2
+
+# The game API.
+httpx>=0.27,<1
+
+# The map hint picture.
+Pillow>=10,<12
