@@ -40,12 +40,29 @@ class Game:
         self.locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
         # chat_id -> (round_id, InputPhoto): the map hint, uploaded once per round.
         self.maps: dict[int, tuple[str, types.InputPhoto]] = {}
+        # user_id -> Telegram first name, cleaned. Memory only: every action
+        # starts from one of the user's own updates, which fills it again.
+        self.first_names: dict[int, str | None] = {}
 
     def button(self, kind: str, label: str, **payload):
         return Button.inline(label, db.register_button(self.conn, kind, **payload))
 
+    async def remember_sender(self, event) -> None:
+        try:
+            sender = await event.get_sender()
+        except Exception as err:  # noqa: BLE001 - no default name is the worst of it
+            log.info("could not read the sender of %s: %r", event.chat_id, err)
+            return
+        self.first_names[event.sender_id] = views.clean_name(getattr(sender, "first_name", None))
+
     def settings(self, user_id: int) -> dict:
-        return db.get_settings(self.conn, user_id)
+        """Saved settings. A leaderboard name never set, or cleared, is the
+        user's Telegram first name; `name_is_default` says which it is."""
+        prefs = db.get_settings(self.conn, user_id)
+        prefs["name_is_default"] = not prefs["name"]
+        if not prefs["name"]:
+            prefs["name"] = self.first_names.get(user_id)
+        return prefs
 
     # Sending helpers.
 
@@ -141,8 +158,9 @@ class Game:
             try:
                 submitted = await self.api.submit(view["round_id"], prefs["name"])
             except ApiError as err:
+                which = "Telegram name" if prefs["name_is_default"] else "saved name"
                 note = (
-                    "Your saved name was refused, so this round was not added. Change it in /settings."
+                    f"Your {which} was refused, so this round was not added. Set another in /settings."
                     if err.status == 400
                     else "This round could not be added automatically. Try the button."
                 )
@@ -208,7 +226,8 @@ class Game:
 
     async def submit_name(self, chat_id: int, user_id: int, round_id: str, name: str) -> None:
         """Adds a round under a name, typed or saved. A refused name reopens the
-        prompt; any name that goes through becomes the remembered one."""
+        prompt; any name that goes through becomes the remembered one, except
+        the Telegram name, which stays a default that follows the account."""
         try:
             result = await self.api.submit(round_id, name)
         except ApiError as err:
@@ -220,8 +239,10 @@ class Game:
             await self.client.send_message(chat_id, err.message or "Could not add that round.")
             return
         db.clear_prompt(self.conn, chat_id)
-        db.save_settings(self.conn, user_id, name=result["name"])
-        buttons = [[self.button("leaderboard", "Leaderboard", user_id=user_id), self.button("play", "Play again", user_id=user_id)]]
+        prefs = self.settings(user_id)
+        if not (prefs["name_is_default"] and result["name"] == prefs["name"]):
+            db.save_settings(self.conn, user_id, name=result["name"])
+        buttons =[[self.button("leaderboard", "Leaderboard", user_id=user_id), self.button("play", "Play again", user_id=user_id)]]
         await self.send(chat_id, (views.submitted_line(result), buttons))
 
     async def set_name(self, chat_id: int, user_id: int, name: str) -> None:
@@ -233,8 +254,10 @@ class Game:
                 return
             raise
         db.clear_prompt(self.conn, chat_id)
-        prefs = db.save_settings(self.conn, user_id, name=result["name"])
-        await self.send(chat_id, views.settings_card(prefs, self.button, user_id, note=f"Saved {result['name']}."))
+        db.save_settings(self.conn, user_id, name=result["name"])
+        await self.send(
+            chat_id, views.settings_card(self.settings(user_id), self.button, user_id, note=f"Saved {result['name']}.")
+        )
 
     # Entry points.
 
@@ -247,6 +270,7 @@ class Game:
 
     async def on_command(self, event, name: str) -> None:
         chat_id, user_id = event.chat_id, event.sender_id
+        await self.remember_sender(event)
         db.clear_prompt(self.conn, chat_id)
 
         if name == "start":
@@ -273,6 +297,7 @@ class Game:
 
     async def on_text(self, event, text: str) -> None:
         chat_id, user_id = event.chat_id, event.sender_id
+        await self.remember_sender(event)
         prompt = db.get_prompt(self.conn, chat_id)
         if prompt is not None and prompt["kind"] == "submit":
             await self.run_locked(chat_id, lambda: self.submit_name(chat_id, user_id, prompt["round_id"], text))
@@ -296,6 +321,7 @@ class Game:
         if payload.get("user_id") not in (None, user_id):
             await event.answer("That button belongs to someone else.", alert=True)
             return
+        await self.remember_sender(event)
 
         if kind in ("hint", "giveup", "hint_yes"):
             live = db.get_live(self.conn, chat_id)
@@ -351,19 +377,19 @@ class Game:
         key = payload.get("key")
         prefs = self.settings(user_id)
         if key == "name":
-            prefs = db.save_settings(self.conn, user_id, name=None)
+            db.save_settings(self.conn, user_id, name=None)
         elif key == "map_style":
-            prefs = db.save_settings(self.conn, user_id, map_style=payload.get("value", "light"))
+            db.save_settings(self.conn, user_id, map_style=payload.get("value", "light"))
         elif key in ("auto_submit", "confirm_hints", "tidy_chat"):
             if key == "auto_submit" and not prefs["name"]:
                 await event.answer("Set a leaderboard name first.", alert=True)
                 return
-            prefs = db.save_settings(self.conn, user_id, **{key: not prefs[key]})
+            db.save_settings(self.conn, user_id, **{key: not prefs[key]})
         else:
             await event.answer()
             return
         await event.answer("Saved.")
-        rich, buttons = views.settings_card(prefs, self.button, user_id)
+        rich, buttons = views.settings_card(self.settings(user_id), self.button, user_id)
         await r.edit_rich_message(self.client, event, rich, buttons)
 
     # The clock.

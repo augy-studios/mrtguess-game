@@ -173,9 +173,8 @@ def save_settings(conn, user_id: int, **changes) -> dict:
         raise ValueError(f"unknown settings: {unknown}")
     current = get_settings(conn, user_id)
     current.update(changes)
-    # Adding rounds automatically needs a name to add them under.
-    if not current["name"]:
-        current["auto_submit"] = False
+    # No saved name is fine even with automatic adding on: the bot falls back
+    # to the Telegram first name, and skips adding when there is none usable.
     conn.execute(
         """insert into settings (user_id, name, auto_submit, confirm_hints, tidy_chat, map_style)
            values (:user_id, :name, :auto_submit, :confirm_hints, :tidy_chat, :map_style)

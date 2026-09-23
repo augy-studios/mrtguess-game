@@ -34,16 +34,19 @@ variable listed.
   the network, no labels, a ring on the station. It is uploaded once per round
   and attached to the card's rich message with a `tg://photo?id=map` link, so
   the clock's edits and fresh cards after a guess keep it.
-- A solved round offers "Add to leaderboard", which asks for a name in the
-  next message. The name is remembered, so later solves offer `Add as
-  NAME` in one tap, and "Another name".
+- A solved round offers `Add as NAME` in one tap, and "Another name", which
+  asks for a name in the next message. NAME is the saved leaderboard name or,
+  until one is saved, the player's Telegram first name, with emoji and
+  symbols dropped and cut to 20 characters. A typed name is remembered in
+  its place; the Telegram name is never saved, so it follows the account.
+  With no usable name at all, the card offers "Add to leaderboard" instead.
 - `/settings` holds the leaderboard name and four switches, each redrawn in
   place when pressed:
 
 | Setting | Default | What it does |
 |---|---|---|
-| Leaderboard name | not set | Filled in by every successful submit; can be changed (checked by the API) or cleared. |
-| Add solved rounds automatically | off | Submits every solve under the saved name. Needs a name; clearing the name turns it off. |
+| Leaderboard name | Telegram first name | Filled in by every successful submit under a typed name; can be changed (checked by the API) or cleared back to the Telegram name. |
+| Add solved rounds automatically | off | Submits every solve under the leaderboard name. Needs a usable name, saved or from Telegram. |
 | Ask before buying a hint | off | A yes/no message with the cost before any hint spends points. |
 | Remove old round cards | on | Off leaves old cards in the chat without their buttons, instead of deleting them. |
 | Map hint colours | light | Dark draws the map on the site's dark background. |
@@ -96,9 +99,12 @@ appear. There is no inline mode, so no inline results.
 4. Press the hint button three times: code, then map (the card redraws in
    place with the picture inside it, and no new message arrives), then the
    Chinese name. Wait for a letter: the map stays on the card.
-5. Guess right: the answer card, with Add to leaderboard and Play again.
-6. Add to leaderboard, send a rude name (refused, asks again), then a good one.
-7. Solve another: the card offers `Add as NAME`, with that name. Press it.
+5. Guess right: the answer card, with `Add as FIRSTNAME` (your Telegram
+   first name), Another name and Play again. `/settings` shows the name as
+   "(your Telegram name)".
+6. Another name, send a rude name (refused, asks again), then a good one.
+7. Solve another: the card offers `Add as NAME`, with the typed name. Press
+   it. In `/settings`, Use Telegram name goes back to the first name.
 8. `/settings`: turn on automatic adding and solve one more; the result card
    says it was added. Turn on hint checks: a hint now asks first. Turn off
    old card removal: a wrong guess leaves the old card, without buttons.

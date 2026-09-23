@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import unicodedata
+
 from telethon import Button
 
 import reply as r
@@ -12,6 +14,20 @@ from commands import COMMANDS
 HINT_LABELS = {2: "code", 3: "map", 4: "Chinese name", 5: "letter"}
 
 REVEAL_SECONDS = 15
+
+
+NAME_LENGTH = 20
+
+
+def clean_name(value: str | None) -> str | None:
+    """A Telegram first name made fit for the leaderboard, following
+    main-site/api/_lib/names.js: emoji and other symbols dropped, whitespace
+    collapsed, cut to 20 characters. None when nothing usable is left. The
+    API still has the last word, profanity included."""
+    name = unicodedata.normalize("NFKC", value or "")
+    name = "".join(c for c in name if c in " _-" or c.isspace() or unicodedata.category(c)[0] in "LNM")
+    name = " ".join(name.split())[:NAME_LENGTH].strip()
+    return name if any(unicodedata.category(c)[0] in "LN" for c in name) else None
 
 
 def spaced_mask(mask: str) -> str:
@@ -142,6 +158,8 @@ ON_OFF = {True: "On", False: "Off"}
 
 def settings_card(settings: dict, button, user_id: int, note: str | None = None):
     name = settings["name"]
+    default = settings.get("name_is_default", False)
+    shown = f"{name} (your Telegram name)" if name and default else name or "Not set"
     rich = r.join(
         [
             r.para(f"*{r.escape_md(note)}*", note) if note else None,
@@ -149,7 +167,7 @@ def settings_card(settings: dict, button, user_id: int, note: str | None = None)
             r.table(
                 ["Setting", "Now"],
                 [
-                    ["Leaderboard name", name or "Not set"],
+                    ["Leaderboard name", shown],
                     ["Add solved rounds automatically", ON_OFF[settings["auto_submit"]]],
                     ["Ask before buying a hint", ON_OFF[settings["confirm_hints"]]],
                     ["Remove old round cards", ON_OFF[settings["tidy_chat"]]],
@@ -157,8 +175,9 @@ def settings_card(settings: dict, button, user_id: int, note: str | None = None)
                 ],
             ),
             r.text(
-                "The leaderboard name is filled in whenever you add a round, so it is always the last one you "
-                "used. With automatic adding on, every solved round goes on the leaderboard under it."
+                "Until you pick a leaderboard name, your Telegram first name is used. A name you set here or "
+                "type when adding a round is remembered instead; clear it to go back to your Telegram name. "
+                "With automatic adding on, every solved round goes on the leaderboard under it."
             ),
         ]
     )
@@ -167,8 +186,8 @@ def settings_card(settings: dict, button, user_id: int, note: str | None = None)
         return [button("setting", f"{label}: {ON_OFF[settings[key]]}", key=key, user_id=user_id)]
 
     name_row = [button("setname", "Change name" if name else "Set name", user_id=user_id)]
-    if name:
-        name_row.append(button("setting", "Clear name", key="name", user_id=user_id))
+    if name and not default:
+        name_row.append(button("setting", "Use Telegram name", key="name", user_id=user_id))
     other_style = "dark" if settings["map_style"] == "light" else "light"
     buttons = [
         name_row,
@@ -264,14 +283,15 @@ def start_card(button, user_id: int, donation_url: str | None):
             r.text("A round never drops below 50 while you are still playing it."),
             r.heading("Leaderboard", 2),
             r.text(
-                "Solve a round, press Add to leaderboard, and send a name of up to 20 characters. "
-                "Each solved round can go on once, within an hour of starting it. There are two boards: "
-                "best score, each name's single best round, and total points, every round under a name added "
-                "up. Names are not accounts: anyone who picks the same name shares its entry."
+                "Solve a round and add it in one tap under your Telegram first name, or pick another name "
+                "of up to 20 characters. Each solved round can go on once, within an hour of starting it. "
+                "There are two boards: best score, each name's single best round, and total points, every "
+                "round under a name added up. Names are not accounts: anyone who picks the same name shares "
+                "its entry."
             ),
             r.text(
-                "The last name you used is remembered, so next time adding a round is one tap. "
-                "Change it, or have every solved round added automatically, in /settings."
+                "A name you pick is remembered in place of your Telegram name. Change it, or have every "
+                "solved round added automatically, in /settings."
             ),
             r.heading("Settings", 2),
             r.text(
