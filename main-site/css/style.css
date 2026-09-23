@@ -136,6 +136,380 @@ body {
   border: 1px solid var(--surface-border);
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+.pill { border-radius: 999px; }
+
+/* The game card. Panels swap with a class flip; the entrance is CSS. */
+.game { padding: 22px 20px; }
+.game .hidden { display: none !important; }
+
+.panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: panel-in 0.2s ease;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.notice p { color: var(--muted); }
+
+.round-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 0.95rem;
+}
+.card .round-meta { color: var(--muted); }
+.score { color: var(--brand-ink); }
+
+/* The masked name. A word never breaks across lines; words wrap. Sized so
+   the longest word, twelve letters, fits a 320px screen. */
+.mask {
+  --tile: clamp(18px, calc((100vw - 64px) / 14), 40px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px calc(var(--tile) * 0.6);
+  padding: 6px 0 2px;
+}
+.word {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+.tile,
+.sep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(var(--tile) * 1.25);
+  font-size: calc(var(--tile) * 0.72);
+  color: var(--ink);
+}
+.tile {
+  width: var(--tile);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  border: 1px solid var(--surface-border);
+}
+.tile.blank { position: relative; }
+.tile.blank::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 18%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--muted-strong);
+}
+.tile.fresh {
+  background: var(--brand-fill-strong);
+  color: var(--on-brand);
+  animation: tile-pop 0.22s ease;
+}
+@keyframes tile-pop {
+  from { transform: scale(0.6); opacity: 0; }
+}
+
+/* Time to the next letter from the clock. */
+.reveal-bar {
+  width: min(260px, 80%);
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-strong);
+}
+.reveal-fill {
+  display: block;
+  height: 100%;
+  background: var(--brand-ink);
+  transform-origin: left center;
+  animation: reveal-fill var(--ms, 15s) linear forwards;
+}
+@keyframes reveal-fill {
+  from { transform: scaleX(var(--from, 0)); }
+  to { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-bar { display: none; }
+}
+.card .reveal-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* Text fields: the guess, and the leaderboard name. */
+.guess {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.field {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  /* 3:1 against the card, as a field's edge must be. */
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  color: var(--ink);
+  font-size: 1rem;
+}
+.field::placeholder { color: var(--muted-strong); opacity: 1; }
+.guess .btn {
+  padding: 10px 16px;
+  font-size: 0.95rem;
+}
+.field.shake { animation: shake 0.3s ease; }
+@keyframes shake {
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+.card .feedback {
+  min-height: 1.4em;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.card .feedback.miss { color: var(--warn); }
+.card .feedback.error { color: var(--error); }
+
+/* Hints bought so far. */
+.hints {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  text-align: left;
+}
+.hint-row dt {
+  font-size: 0.85rem;
+  color: var(--muted-strong);
+  flex-shrink: 0;
+}
+.hint-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--ink);
+  text-align: right;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.chip.code { letter-spacing: 0.03em; }
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dot);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.zh { font-size: 1.3rem; }
+
+/* The map hint. Leaflet's own look is kept to the controls, restyled to
+   the theme. */
+.map-hint {
+  width: 100%;
+  max-width: 440px;
+}
+.map {
+  height: clamp(220px, 60vw, 320px);
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+}
+.map.leaflet-container {
+  background: var(--bg);
+  font: inherit;
+}
+.map .leaflet-bar {
+  border: 1px solid var(--surface-border);
+  box-shadow: none;
+}
+.map .leaflet-bar a,
+.map .leaflet-bar a:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
+  color: var(--ink);
+  border-bottom-color: var(--surface-border);
+}
+/* Leaflet's stylesheet loads after this one, so these outrank it on
+   specificity rather than order. */
+.map.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+.map.leaflet-container .leaflet-control-attribution a { color: var(--brand-ink); }
+.map-failed {
+  padding: 40px 16px;
+  color: var(--muted);
+}
+
+/* Two rings and a dot, as telegram-bot/mapimage.py draws them. */
+.leaflet-div-icon.station-ring {
+  background: none;
+  border: none;
+}
+.station-ring span,
+.station-ring span::before,
+.station-ring span::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.station-ring span {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--ink);
+}
+.station-ring span::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border: 3.5px solid var(--ink);
+}
+.station-ring span::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+}
+
+.round-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.round-actions .btn { padding: 9px 16px; }
+#giveUpBtn.armed {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* A finished round. */
+.result-title {
+  font-size: 1.8rem;
+  font-weight: normal;
+  color: var(--brand-ink);
+}
+.result-title:focus { outline: none; }
+.card .result-alt { font-size: 1.1rem; }
+.result-codes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.submit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+.submit-label {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.card .submit-msg {
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--error);
+}
+.card .submit-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.submitted {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 440px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  text-align: left;
+}
+.card .submitted p { color: var(--ok); }
+.ok-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--ok);
+}
+.ok-icon svg { width: 100%; height: 100%; }
+
+/* Leaderboard modal. */
+.board-body {
+  min-height: 120px;
+  max-height: 50vh;
+  overflow-y: auto;
+  transition: opacity 0.15s ease;
+}
+.board-body[aria-busy="true"] { opacity: 0.6; }
+.board-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.board-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+.board-table td {
+  padding: 7px 8px;
+  border-top: 1px solid var(--surface-border);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.board-table th:first-child,
+.board-table td:first-child { width: 2.5em; color: var(--muted-strong); }
+.board-empty {
+  padding: 32px 8px;
+  text-align: center;
+  color: var(--muted-strong);
+}
+
 /* Update bar, per update-bar-spec.md. Quieter than the header, full width,
    tinted enough to read as a notice. */
 .update-notice {
@@ -174,6 +548,8 @@ body {
   .topbar { padding: 8px 8px 8px 12px; }
   .brand-name { font-size: 1.05rem; }
   .topbar-actions { gap: 6px; }
+  .game { padding: 18px 14px; }
+  .result-title { font-size: 1.5rem; }
   .update-notice-inner { flex-wrap: wrap; }
   .update-notice p { flex-basis: 100%; }
 }

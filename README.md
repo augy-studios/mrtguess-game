@@ -64,8 +64,8 @@ Following the build order in `01-station-guess.md`:
 - [x] 1. Schema (`migrations/`) and seed (`scripts/seed_supabase.py`)
 - [x] 2. The API
 - [x] 3. Telegram bot
-- [ ] Check the mechanic is fun on Telegram before going further
-- [ ] 4. PWA game screen (the site is a themed, offline-capable shell until then)
+- [x] Check the mechanic is fun on Telegram before going further
+- [x] 4. PWA game screen
 - [ ] 5. Discord bot
 
 All five hint tiers are in the API already, since the letter reveal is the

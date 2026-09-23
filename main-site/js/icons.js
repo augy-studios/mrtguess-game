@@ -17,6 +17,19 @@ export const icons = {
   train: svg(
     `<rect x="5" y="3.5" width="14" height="13" rx="3"/><path d="M5 11h14M9 20.5l-1.5-4M15 20.5l1.5-4"/><circle cx="9" cy="14" r=".4" fill="currentColor"/><circle cx="15" cy="14" r=".4" fill="currentColor"/>`
   ),
+  trophy: svg(
+    `<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5.5A1.5 1.5 0 0 0 4 7.5 3.5 3.5 0 0 0 7.5 11H8M16 6h2.5A1.5 1.5 0 0 1 20 7.5a3.5 3.5 0 0 1-3.5 3.5H16"/><path d="M12 13v4M8.5 20h7M10 17h4"/>`
+  ),
+  bulb: svg(
+    `<path d="M9 17.5h6M10 20.5h4"/><path d="M12 3.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8 1 .8 1.6v.5h5v-.5c0-.6.3-1.2.8-1.6A5.5 5.5 0 0 0 12 3.5Z"/>`
+  ),
+  flag: svg(`<path d="M5 21V4"/><path d="M5 4.5h11l-2 4 2 4H5"/>`),
+  refresh: svg(`<path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5"/><path d="M4 4v4.5h4.5"/><path d="M4 13a8 8 0 0 0 14.3 4.3L20 15.5"/><path d="M20 20v-4.5h-4.5"/>`),
+  send: svg(`<path d="M5 12h13M13 6.5l5.5 5.5-5.5 5.5"/>`),
+  check: svg(`<path d="m5 12.5 4.5 4.5L19 7.5"/>`),
+  offline: svg(
+    `<path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 6-.8M5 13a10 10 0 0 1 4.2-2.6M12.8 10.1A10 10 0 0 1 19 13M2 9.5a15 15 0 0 1 4.3-2.8M10.5 5.6A15 15 0 0 1 22 9.5"/><circle cx="12" cy="19.5" r=".6" fill="currentColor"/>`
+  ),
   heartFilled: svg(
     `<path d="M12 20.2 4.9 13a5 5 0 0 1 7.1-7l0 0a5 5 0 0 1 7.1 7L12 20.2Z" fill="currentColor" stroke="none"/>`
   ),

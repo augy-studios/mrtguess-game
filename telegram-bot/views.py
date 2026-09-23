@@ -236,7 +236,7 @@ def leaderboard_card(board: str, entries: list[dict], button, user_id: int, limi
     return r.join(parts), [[switch, button("play", "Play", user_id=user_id)]]
 
 
-def start_card(button, user_id: int, donation_url: str | None):
+def start_card(button, user_id: int, site_url: str, donation_url: str | None):
     """Everything a help command would say. There is no help command."""
     rich = r.join(
         [
@@ -307,9 +307,16 @@ def start_card(button, user_id: int, donation_url: str | None):
                 "settings, including your leaderboard name, are kept by the bot against the same id. Only a "
                 "name you choose to submit is ever shown. Works in private chats only."
             ),
+            r.text(
+                "The same game runs in the browser, and can be installed as an app from there. Both share "
+                "one leaderboard. Rounds do not carry over between the two."
+            ),
         ]
     )
-    buttons = [[button("play", "Play", user_id=user_id), button("leaderboard", "Leaderboard", user_id=user_id)]]
+    buttons = [
+        [button("play", "Play", user_id=user_id), button("leaderboard", "Leaderboard", user_id=user_id)],
+        [Button.url("Play in the browser", site_url)],
+    ]
     if donation_url:
         buttons.append([Button.url("Buy Augy a Coffee", donation_url)])
     return rich, buttons

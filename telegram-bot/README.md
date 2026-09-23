@@ -92,7 +92,8 @@ appear. There is no inline mode, so no inline results.
 
 1. `/start`: how to play, a scoring table, the leaderboard rules, the command
    table and what is stored, rendered natively. It is the help; there is no
-   `/help`, and typing it points back to `/start`.
+   `/help`, and typing it points back to `/start`. "Play in the browser"
+   opens the site.
 2. `/play`: a card with a code block mask. Wait 15 seconds: a letter appears
    in place and the score drops by 60.
 3. Send a wrong guess: a new card at the bottom saying so, the old one gone.

@@ -274,7 +274,9 @@ class Game:
         db.clear_prompt(self.conn, chat_id)
 
         if name == "start":
-            await self.send(chat_id, views.start_card(self.button, user_id, self.config.donation_url))
+            await self.send(
+                chat_id, views.start_card(self.button, user_id, self.config.site_url, self.config.donation_url)
+            )
             return
         if name == "settings":
             await self.send(chat_id, views.settings_card(self.settings(user_id), self.button, user_id))

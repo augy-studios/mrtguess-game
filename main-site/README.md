@@ -17,6 +17,14 @@ functions.
 | `vendor/` | Vendored Leaflet, for the map hint. |
 | `images/` | Manifest screenshots. |
 
+**The game screen:** the page opens on a round, the masked name and a text
+box, with nothing to read first. Letters the server's clock reveals appear in
+place, with a bar counting down to the next. Hints are bought in order from
+one button; give up takes two taps. A solved round can be added to the
+leaderboard under a name, which is remembered in this browser. A round left
+open survives a reload, keyed by a random `client_key` in local storage. The
+trophy button opens both leaderboards.
+
 **Offline:** the page, its scripts, the station and line data, Leaflet and the
 Jua font are precached, so the site loads with no connection. Rounds need the
 network: nothing under `/api/` is ever cached.

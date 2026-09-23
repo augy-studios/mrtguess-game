@@ -31,7 +31,7 @@
 // 4. Nothing under /api/ is ever cached. A cached round or leaderboard is a
 //    wrong answer, not a stale one.
 
-const VERSION = "mrtguessr-v3";
+const VERSION = "mrtguessr-v4";
 
 const SHELL = `mrtguessr-shell-${VERSION}`;
 
@@ -55,6 +55,10 @@ const PRECACHE = [
   "/css/style.css",
 
   "/js/app.js",
+  "/js/api.js",
+  "/js/game.js",
+  "/js/leaderboard.js",
+  "/js/map.js",
   "/js/theme.js",
   "/js/icons.js",
   "/js/ui.js",

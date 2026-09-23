@@ -76,6 +76,9 @@
                 <h1 class="brand-name">MRT Station Guesser</h1>
             </div>
             <div class="topbar-actions">
+                <button id="boardBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Leaderboard">
+                    <span data-icon="trophy"></span>
+                </button>
                 <button id="themeBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Theme">
                     <span data-icon="sun"></span>
                 </button>
@@ -86,17 +89,108 @@
             </div>
         </header>
 
-        <!-- The game goes here in build step 4, after the mechanic has been
-             tried on Telegram. -->
-        <main class="card glass" aria-labelledby="soonTitle">
-            <span class="card-icon" data-icon="train"></span>
-            <h2 id="soonTitle">Almost ready to play</h2>
-            <p>Guess the station from its masked name. Letters reveal as the clock runs, and every hint costs points.</p>
+        <main class="card glass game" aria-labelledby="gameTitle">
+            <h2 id="gameTitle" class="visually-hidden">Guess the station</h2>
+
+            <!-- Shown first, while a station is picked, and for anything that
+                 stops a round from starting. -->
+            <section id="notice" class="panel notice">
+                <span class="card-icon" id="noticeIcon" data-icon="train"></span>
+                <p id="noticeText">Picking a station.</p>
+                <button id="noticeBtn" class="btn btn-primary hidden" type="button">
+                    <span data-icon="refresh"></span><span id="noticeBtnLabel">Try again</span>
+                </button>
+            </section>
+
+            <section id="play" class="panel play hidden">
+                <p class="round-meta">
+                    <span id="letterCount"></span>
+                    <span class="score"><span id="score"></span> points</span>
+                </p>
+                <div id="mask" class="mask" role="img"></div>
+                <div id="revealBar" class="reveal-bar" aria-hidden="true"><span class="reveal-fill"></span></div>
+                <p id="revealNote" class="reveal-note"></p>
+
+                <form id="guessForm" class="guess" autocomplete="off">
+                    <label for="guessInput" class="visually-hidden">Your guess</label>
+                    <input id="guessInput" class="field" type="text" placeholder="Station name"
+                        maxlength="64" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="send">
+                    <button id="guessBtn" class="btn btn-primary" type="submit">
+                        <span data-icon="send"></span>Guess
+                    </button>
+                </form>
+                <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+
+                <dl id="hints" class="hints"></dl>
+                <div id="mapHint" class="map-hint hidden">
+                    <div id="map" class="map" role="img" aria-label="Rail map with the station ringed"></div>
+                </div>
+                <dl id="laterHints" class="hints"></dl>
+
+                <div class="round-actions">
+                    <button id="hintBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="bulb"></span><span id="hintLabel">Hint</span>
+                    </button>
+                    <button id="giveUpBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="flag"></span><span id="giveUpLabel">Give up</span>
+                    </button>
+                </div>
+            </section>
+
+            <section id="result" class="panel result hidden" aria-labelledby="resultTitle">
+                <h3 id="resultTitle" class="result-title" tabindex="-1"></h3>
+                <p id="resultAlt" class="result-alt"></p>
+                <p id="resultCodes" class="result-codes"></p>
+                <p id="resultScore" class="result-score"></p>
+
+                <form id="submitForm" class="submit" autocomplete="off">
+                    <label for="nameInput" class="submit-label">Add this round to the leaderboard</label>
+                    <div class="guess">
+                        <input id="nameInput" class="field" type="text" placeholder="Your name" maxlength="20"
+                            autocomplete="nickname" spellcheck="false" enterkeyhint="done">
+                        <button id="submitBtn" class="btn btn-primary" type="submit">Add</button>
+                    </div>
+                    <p id="submitMsg" class="submit-msg" role="status" aria-live="polite"></p>
+                    <p class="submit-note">Names are shared: anyone who picks the same one shares its entry.</p>
+                </form>
+                <div id="submitted" class="submitted hidden" role="status">
+                    <span class="ok-icon" data-icon="check"></span>
+                    <p id="submittedText"></p>
+                </div>
+
+                <div class="round-actions">
+                    <button id="playAgainBtn" class="btn btn-primary pill" type="button">
+                        <span data-icon="refresh"></span>Play again
+                    </button>
+                    <button id="resultBoardBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="trophy"></span>Leaderboard
+                    </button>
+                </div>
+            </section>
         </main>
 
         <footer class="foot">
             Made with <span class="footer-heart" data-icon="heartFilled" aria-label="love" role="img"></span> by Augy
         </footer>
+    </div>
+
+    <!-- Leaderboard modal -->
+    <div class="modal-backdrop hidden" id="boardModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="boardModalTitle">
+            <div class="modal-head">
+                <h2 id="boardModalTitle">Leaderboard</h2>
+                <button class="icon-btn small" type="button" data-close-modal="boardModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+            <div class="mode-toggle" id="boardTabs" role="tablist" aria-label="Board">
+                <button class="mode-btn" type="button" role="tab" data-board="best" aria-selected="true" aria-controls="boardBody">Best score</button>
+                <button class="mode-btn" type="button" role="tab" data-board="total" aria-selected="false" aria-controls="boardBody">Total points</button>
+            </div>
+            <div id="boardBody" class="board-body" role="tabpanel"></div>
+            <p id="boardNote" class="mode-note"></p>
+            <p class="mode-note">Anyone who picks the same name shares its entry.</p>
+        </div>
     </div>
 
     <!-- Theme picker modal -->

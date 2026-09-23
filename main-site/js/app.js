@@ -1,6 +1,8 @@
 import { COLOR_THEMES, applyColorTheme, applyMode, getStoredColorTheme, getStoredMode, getModePreference, initTheme } from "./theme.js";
 import { hydrateIcons, openModal, closeModal, closeTopModal } from "./ui.js";
 import { initUpdateBar } from "./update-bar.js";
+import { initGame } from "./game.js";
+import { initLeaderboard } from "./leaderboard.js";
 
 /* Theme modal, per uwuapps-theme.md section 6. */
 
@@ -87,6 +89,8 @@ function boot() {
   updateThemeButtonIcon();
   buildThemeModal();
   wireModals();
+  initLeaderboard();
+  initGame();
   initUpdateBar();
 }
 
