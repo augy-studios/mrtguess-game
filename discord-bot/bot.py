@@ -105,6 +105,20 @@ class Bot(discord.Client):
 
     async def on_ready(self) -> None:
         log.info("connected as %s, API at %s", self.user, self.config.site_url)
+        await self.show_guild_count()
+
+    async def on_guild_join(self, guild: discord.Guild) -> None:
+        await self.show_guild_count()
+
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        await self.show_guild_count()
+
+    async def show_guild_count(self) -> None:
+        """The custom status. Counts servers the bot is in; user installs
+        are not guilds and do not show."""
+        count = len(self.guilds)
+        status = f"Guessing station names in {count} guild{'' if count == 1 else 's'}"
+        await self.change_presence(activity=discord.CustomActivity(name=status))
 
     async def on_message(self, message: discord.Message) -> None:
         # Direct messages only: in a server, guesses go through /guess or the

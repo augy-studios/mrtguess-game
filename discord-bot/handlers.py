@@ -426,10 +426,8 @@ class Game:
 
     async def cmd_help(self, interaction: discord.Interaction) -> None:
         self.remember(interaction.user)
-        uid = interaction.user.id
-        out = self.out(views.help_card(self.button, uid, self.config.site_url, self.config.donation_url))
-        # Only the asker needs the rules anywhere but their own chat with the bot.
-        await interaction.response.send_message(ephemeral=not interaction.context.dm_channel, **out.send_kwargs())
+        out = self.out(views.help_card(self.button, self.config.site_url, self.config.donation_url))
+        await interaction.response.send_message(**out.send_kwargs())
 
     async def on_dm_text(self, message: discord.Message) -> None:
         """A plain message in a direct message is a guess, as on Telegram."""

@@ -50,9 +50,9 @@ differs:
   saved, the player's Discord display name, with emoji and symbols dropped and
   cut to 20 characters. A typed name is remembered in its place; the Discord
   name is never saved, so it follows the account.
-- `/help` and `/settings` answer only the player who asked, everywhere but
-  the bot's own DM (where `/help` is shown normally).
-  `/help` is the help; there is no `/start`.
+- `/help` is shown to everyone in the channel, and its Play and Leaderboard
+  buttons work for whoever presses them. `/settings` answers only the player
+  who asked. `/help` is the help; there is no `/start`.
 - `/settings` holds the same name and four switches as the Telegram bot,
   each redrawn in place when pressed:
 
@@ -96,8 +96,8 @@ old buttons, the live cards' updates and everyone's settings, never a score.
 ## Checking it by hand
 
 1. `/help`: how to play, a scoring table, the leaderboard rules, the command
-   list and what is stored. In a server only you see it. "Play in the
-   browser" opens the site.
+   list and what is stored. In a server everyone sees it, and anyone can
+   press Play. "Play in the browser" opens the site.
 2. `/play`: a card with the masked name. Wait 15 seconds: a letter appears in
    place and the score drops by 60.
 3. Press Guess and send a wrong answer: the same card says so. Send

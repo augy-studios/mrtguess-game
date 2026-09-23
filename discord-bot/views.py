@@ -247,8 +247,10 @@ SCORING = [
 ]
 
 
-def help_card(button, user_id: int, site_url: str, donation_url: str | None):
-    """Everything a start command would say. There is no start command."""
+def help_card(button, site_url: str, donation_url: str | None):
+    """Everything a start command would say. There is no start command.
+    Everyone in the channel sees it, so its buttons work for whoever presses
+    them."""
     embed = discord.Embed(
         title="Guess the station",
         description="A Singapore MRT and LRT guessing game, played right here. No sign up.",
@@ -299,7 +301,7 @@ def help_card(button, user_id: int, site_url: str, donation_url: str | None):
     )
 
     rows = [
-        [button("play", "Play", PRIMARY, user_id=user_id), button("leaderboard", "Leaderboard", GREY, user_id=user_id)],
+        [button("play", "Play", PRIMARY), button("leaderboard", "Leaderboard", GREY)],
         [discord.ui.Button(label="Play in the browser", url=site_url)],
     ]
     if donation_url:
