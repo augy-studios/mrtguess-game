@@ -4,10 +4,10 @@
 import { api } from "./api.js";
 import { openLeaderboard } from "./leaderboard.js";
 import { clearStation, showStation } from "./map.js";
+import { getSettings, saveSettings } from "./settings.js";
 import { escapeHtml, hydrateIcons } from "./ui.js";
 
 const ROUND_STORAGE = "mrtguessr.round";
-const NAME_STORAGE = "mrtguessr.name";
 
 const HINT_LABELS = { 2: "Station code", 3: "Map", 4: "Chinese name", 5: "Letter" };
 // For the countdown bar only. The clock itself is the server's.
@@ -24,6 +24,7 @@ let busy = false;
 // answer from a guess or hint.
 let seq = 0;
 let giveUpTimer = null;
+let hintTimer = null;
 
 const store = {
   get: (key) => {
@@ -171,7 +172,12 @@ function renderActions(v) {
   const next = v.next_hint;
   const hintBtn = $("hintBtn");
   hintBtn.disabled = busy || !next || v.expired;
-  $("hintLabel").textContent = next ? `${HINT_LABELS[next.tier]} hint, -${next.penalty}` : "No more hints";
+  hintBtn.classList.toggle("armed", Boolean(hintTimer && next));
+  $("hintLabel").textContent = !next
+    ? "No more hints"
+    : hintTimer
+      ? `Tap again to spend ${next.penalty} points`
+      : `${HINT_LABELS[next.tier]} hint, -${next.penalty}`;
   $("guessBtn").disabled = busy || v.expired;
   $("giveUpBtn").disabled = busy;
 }
@@ -276,9 +282,22 @@ function onGuess(event) {
   });
 }
 
+function disarmHint() {
+  clearTimeout(hintTimer);
+  hintTimer = null;
+  if (isLive(view)) renderActions(view);
+}
+
 function onHint() {
   const bought = view?.next_hint;
   if (!bought) return;
+  // With "Ask before buying a hint" on, the first tap only asks.
+  if (getSettings().confirm_hints && !hintTimer) {
+    hintTimer = setTimeout(disarmHint, 4000);
+    renderActions(view);
+    return;
+  }
+  disarmHint();
   act(async () => {
     const next = await api.hint(view.round_id);
     render(next);
@@ -324,31 +343,29 @@ function finish(v) {
   $("resultCodes").innerHTML = (a.codes ?? []).map((c) => `<span class="chip code">${escapeHtml(c)}</span>`).join("");
   $("resultScore").textContent = v.solved ? `Solved for ${v.score} points.` : "No points this round.";
 
+  const prefs = getSettings();
   $("submitForm").classList.toggle("hidden", !v.solved);
   $("submitted").classList.add("hidden");
   $("submitMsg").textContent = "";
-  $("nameInput").value = store.get(NAME_STORAGE) ?? "";
+  $("nameInput").value = prefs.name ?? "";
   $("submitBtn").disabled = false;
 
   showPanel("result");
   say("");
   $("playAgainBtn").focus();
+
+  if (v.solved && prefs.auto_submit && prefs.name) submitAs(prefs.name, true);
 }
 
-async function onSubmit(event) {
-  event.preventDefault();
-  const name = $("nameInput").value.trim();
+// Adds the round under a name, typed or saved. Any name that goes through
+// becomes the saved one, as on Telegram.
+async function submitAs(name, auto = false) {
   const msg = $("submitMsg");
-  if (!name) {
-    msg.textContent = "Enter a name.";
-    $("nameInput").focus();
-    return;
-  }
   $("submitBtn").disabled = true;
-  msg.textContent = "";
+  msg.textContent = auto ? `Adding as ${name}.` : "";
   try {
     const r = await api.submit(view.round_id, name);
-    store.set(NAME_STORAGE, r.name);
+    saveSettings({ name: r.name });
     const rounds = r.rounds === 1 ? "1 round" : `${r.rounds} rounds`;
     $("submittedText").textContent =
       `Added as ${r.name}. Best score ${r.best_score}, ranked ${r.rank}. ` +
@@ -356,13 +373,24 @@ async function onSubmit(event) {
     $("submitForm").classList.add("hidden");
     $("submitted").classList.remove("hidden");
   } catch (err) {
-    msg.textContent =
-      err.code === "offline"
-        ? "No connection. Try again once you are back online."
-        : err.message || "That did not go through. Try again in a moment.";
+    if (err.code === "offline") msg.textContent = "No connection. Try again once you are back online.";
+    else if (auto && err.status === 400) msg.textContent = "Your saved name was refused, so this round was not added. Change it in Settings.";
+    else if (auto && err.status !== 409 && err.status !== 410) msg.textContent = "This round could not be added automatically. Try the button.";
+    else msg.textContent = err.message || "That did not go through. Try again in a moment.";
     if (err.code === "already_submitted" || err.code === "expired") $("submitForm").classList.add("hidden");
     else $("submitBtn").disabled = false;
   }
+}
+
+function onSubmit(event) {
+  event.preventDefault();
+  const name = $("nameInput").value.trim();
+  if (!name) {
+    $("submitMsg").textContent = "Enter a name.";
+    $("nameInput").focus();
+    return;
+  }
+  submitAs(name);
 }
 
 // Starting and resuming.
@@ -398,6 +426,8 @@ function beginRound(v) {
   say("");
   $("guessInput").value = "";
   disarmGiveUp();
+  clearTimeout(hintTimer);
+  hintTimer = null;
   showPanel("play");
   render(v);
   schedulePoll();

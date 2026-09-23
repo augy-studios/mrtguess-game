@@ -25,6 +25,18 @@ leaderboard under a name, which is remembered in this browser. A round left
 open survives a reload, keyed by a random `client_key` in local storage. The
 trophy button opens both leaderboards.
 
+**Settings:** the gear button holds the Telegram bot's `/settings`, kept in
+this browser's local storage and separate from the bot's:
+
+| Setting | Default | What it does |
+|---|---|---|
+| Leaderboard name | not set | Checked by `/api/leaderboard/name`; also saved by every successful submit. |
+| Add solved rounds automatically | off | Submits every solve under the saved name. Needs a name; clearing it turns this off. |
+| Ask before buying a hint | off | The hint button takes a second tap, naming the cost. |
+| Map hint colours | match page | Light or dark map whatever the page's mode. |
+
+The bot's "remove old round cards" is left out: there are no old cards here.
+
 **Offline:** the page, its scripts, the station and line data, Leaflet and the
 Jua font are precached, so the site loads with no connection. Rounds need the
 network: nothing under `/api/` is ever cached.

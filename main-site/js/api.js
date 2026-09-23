@@ -66,6 +66,7 @@ export const api = {
   hint: (roundId) => round("hint", roundId),
   giveUp: (roundId) => round("giveup", roundId),
   guess: (roundId, guess) => round("guess", roundId, { guess }),
+  checkName: (name) => call("POST", "/api/leaderboard/name", { name }),
   submit: (roundId, name) => call("POST", "/api/leaderboard/submit", { round_id: roundId, name }),
   leaderboard: (board) => call("GET", `/api/leaderboard?board=${encodeURIComponent(board)}`),
 };

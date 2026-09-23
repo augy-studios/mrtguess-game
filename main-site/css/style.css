@@ -476,6 +476,85 @@ body {
 }
 .ok-icon svg { width: 100%; height: 100%; }
 
+/* Map hint colours pinned by the setting rather than following the page:
+   theme.css's own light and dark mode tokens, redefined on the map alone. */
+.map[data-map-style="light"] {
+  --bg: #eef2f0;
+  --ink: #121815;
+  --muted: #5b665f;
+  --surface-border: rgba(255, 255, 255, 0.65);
+  --brand-ink: #1f6b3d;
+}
+.map[data-map-style="dark"] {
+  --bg: #0c100e;
+  --ink: #eef2ef;
+  --muted: #9aa7a0;
+  --surface-border: rgba(255, 255, 255, 0.14);
+  --brand-ink: #bff5cf;
+}
+
+/* Settings modal. */
+.modal .hidden { display: none !important; }
+.saved-name {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.modal .guess { max-width: none; }
+.clear-name { align-self: flex-start; }
+.mode-toggle.thirds { grid-template-columns: repeat(3, 1fr); }
+
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  font-size: 0.9rem;
+  color: var(--ink);
+  text-align: left;
+}
+.setting-toggle > span:first-child { flex: 1; }
+.switch-state {
+  font-size: 0.8rem;
+  color: var(--muted-strong);
+}
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  border: 1px solid color-mix(in srgb, var(--ink) 45%, transparent);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted-strong);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.setting-toggle[aria-checked="true"] .switch {
+  background: var(--brand-ink);
+  border-color: var(--brand-ink);
+}
+.setting-toggle[aria-checked="true"] .switch::after {
+  background: var(--bg);
+  transform: translateX(16px);
+}
+
+#hintBtn.armed {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
 /* Leaderboard modal. */
 .board-body {
   min-height: 120px;
@@ -546,7 +625,16 @@ body {
   }
   .update-notice + .page { padding-top: 10px; }
   .topbar { padding: 8px 8px 8px 12px; }
-  .brand-name { font-size: 1.05rem; }
+  /* Four header buttons leave no room for the name on a phone; the icon
+     stays, and the heading is still read out. */
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
   .topbar-actions { gap: 6px; }
   .game { padding: 18px 14px; }
   .result-title { font-size: 1.5rem; }

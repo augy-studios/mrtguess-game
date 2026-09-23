@@ -3,6 +3,7 @@ import { hydrateIcons, openModal, closeModal, closeTopModal } from "./ui.js";
 import { initUpdateBar } from "./update-bar.js";
 import { initGame } from "./game.js";
 import { initLeaderboard } from "./leaderboard.js";
+import { initSettings } from "./settings.js";
 
 /* Theme modal, per uwuapps-theme.md section 6. */
 
@@ -90,6 +91,7 @@ function boot() {
   buildThemeModal();
   wireModals();
   initLeaderboard();
+  initSettings();
   initGame();
   initUpdateBar();
 }

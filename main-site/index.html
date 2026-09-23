@@ -79,6 +79,9 @@
                 <button id="boardBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Leaderboard">
                     <span data-icon="trophy"></span>
                 </button>
+                <button id="settingsBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Settings">
+                    <span data-icon="settings"></span>
+                </button>
                 <button id="themeBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Theme">
                     <span data-icon="sun"></span>
                 </button>
@@ -190,6 +193,53 @@
             <div id="boardBody" class="board-body" role="tabpanel"></div>
             <p id="boardNote" class="mode-note"></p>
             <p class="mode-note">Anyone who picks the same name shares its entry.</p>
+        </div>
+    </div>
+
+    <!-- Settings modal: the Telegram bot's /settings, for this browser -->
+    <div class="modal-backdrop hidden" id="settingsModal">
+        <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+            <div class="modal-head">
+                <h2 id="settingsModalTitle">Settings</h2>
+                <button class="icon-btn small" type="button" data-close-modal="settingsModal" aria-label="Close">
+                    <span data-icon="close"></span>
+                </button>
+            </div>
+
+            <p class="modal-section-label">Leaderboard name</p>
+            <p id="savedName" class="saved-name"></p>
+            <form id="nameForm" class="guess" autocomplete="off">
+                <label for="settingsName" class="visually-hidden">New leaderboard name</label>
+                <input id="settingsName" class="field" type="text" placeholder="New name" maxlength="20"
+                    autocomplete="nickname" spellcheck="false" enterkeyhint="done">
+                <button id="saveNameBtn" class="btn btn-primary" type="submit">Save</button>
+            </form>
+            <p id="nameMsg" class="mode-note" role="status" aria-live="polite"></p>
+            <button id="clearNameBtn" class="btn btn-quiet pill clear-name" type="button">Clear name</button>
+
+            <p class="modal-section-label">Rounds</p>
+            <button class="setting-toggle" type="button" role="switch" aria-checked="false" data-setting="auto_submit">
+                <span>Add solved rounds automatically</span>
+                <span class="switch-state"></span><span class="switch" aria-hidden="true"></span>
+            </button>
+            <p id="autoNote" class="mode-note">Save a name first to add rounds automatically.</p>
+            <button class="setting-toggle" type="button" role="switch" aria-checked="false" data-setting="confirm_hints">
+                <span>Ask before buying a hint</span>
+                <span class="switch-state"></span><span class="switch" aria-hidden="true"></span>
+            </button>
+
+            <p class="modal-section-label">Map hint colours</p>
+            <div class="mode-toggle thirds" id="mapStyleToggle">
+                <button class="mode-btn" type="button" data-map-style="page" aria-pressed="false">Match page</button>
+                <button class="mode-btn" type="button" data-map-style="light" aria-pressed="false">Light</button>
+                <button class="mode-btn" type="button" data-map-style="dark" aria-pressed="false">Dark</button>
+            </div>
+
+            <p class="mode-note">
+                The leaderboard name is filled in whenever you add a round, so it is always the last one you
+                used. With automatic adding on, every solved round goes on the leaderboard under it. Settings
+                are kept in this browser, separate from the Telegram bot's.
+            </p>
         </div>
     </div>
 
