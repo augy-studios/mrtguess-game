@@ -23,7 +23,9 @@ create table if not exists buttons (
     created_at real not null
 );
 -- One live card per player per channel: a server channel can hold several
--- players' rounds at once.
+-- players' rounds at once. hook_token and hook_at are the token of the
+-- interaction that sent the card and when it was issued; see card_hook in
+-- handlers.py.
 create table if not exists live_rounds (
     channel_id integer not null,
     user_id integer not null,
@@ -32,6 +34,8 @@ create table if not exists live_rounds (
     next_tick_at real,
     last_mask text,
     last_score integer,
+    hook_token text,
+    hook_at real,
     primary key (channel_id, user_id)
 );
 create index if not exists live_rounds_tick on live_rounds (next_tick_at);
@@ -52,6 +56,11 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("pragma journal_mode=wal")
     conn.executescript(SCHEMA)
+    # Files made before the hook columns existed.
+    have = {row["name"] for row in conn.execute("pragma table_info(live_rounds)")}
+    for column, kind in (("hook_token", "text"), ("hook_at", "real")):
+        if column not in have:
+            conn.execute(f"alter table live_rounds add column {column} {kind}")
     conn.execute("delete from buttons where created_at < ?", (time.time() - BUTTON_TTL_S,))
     return conn
 
@@ -76,26 +85,36 @@ def read_button(conn, button_id: str) -> tuple[str, dict] | None:
     return (row["kind"], json.loads(row["payload"])) if row else None
 
 
-# The live round cards.
+# The live round cards. A card is (msg_id, hook_token, hook_at); the hook is
+# None, None for a card the bot sent with its own token.
+
+Card = tuple[int, "str | None", "float | None"]
 
 
-def set_live(conn, channel_id: int, user_id: int, round_id: str, msg_id: int, view: dict) -> None:
+def set_live(conn, channel_id: int, user_id: int, round_id: str, card: Card, view: dict) -> None:
     conn.execute(
-        """insert into live_rounds (channel_id, user_id, round_id, msg_id, next_tick_at, last_mask, last_score)
-           values (?, ?, ?, ?, ?, ?, ?)
+        """insert into live_rounds (channel_id, user_id, round_id, msg_id, hook_token, hook_at,
+             next_tick_at, last_mask, last_score)
+           values (?, ?, ?, ?, ?, ?, ?, ?, ?)
            on conflict (channel_id, user_id) do update set round_id = excluded.round_id,
-             msg_id = excluded.msg_id, next_tick_at = excluded.next_tick_at,
+             msg_id = excluded.msg_id, hook_token = excluded.hook_token, hook_at = excluded.hook_at,
+             next_tick_at = excluded.next_tick_at,
              last_mask = excluded.last_mask, last_score = excluded.last_score""",
-        (channel_id, user_id, round_id, msg_id, next_tick(view), view["mask"], view["score"]),
+        (channel_id, user_id, round_id, *card, next_tick(view), view["mask"], view["score"]),
     )
 
 
-def update_live(conn, channel_id: int, user_id: int, view: dict, msg_id: int | None = None) -> None:
+def update_live(conn, channel_id: int, user_id: int, view: dict, card: Card | None = None) -> None:
+    """The latest view, and with a card, the new message that replaced the old one."""
     conn.execute(
-        """update live_rounds set next_tick_at = ?, last_mask = ?, last_score = ?,
-             msg_id = coalesce(?, msg_id) where channel_id = ? and user_id = ?""",
-        (next_tick(view), view["mask"], view["score"], msg_id, channel_id, user_id),
+        "update live_rounds set next_tick_at = ?, last_mask = ?, last_score = ? where channel_id = ? and user_id = ?",
+        (next_tick(view), view["mask"], view["score"], channel_id, user_id),
     )
+    if card is not None:
+        conn.execute(
+            "update live_rounds set msg_id = ?, hook_token = ?, hook_at = ? where channel_id = ? and user_id = ?",
+            (*card, channel_id, user_id),
+        )
 
 
 def get_live(conn, channel_id: int, user_id: int):

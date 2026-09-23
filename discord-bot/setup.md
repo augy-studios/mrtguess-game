@@ -33,14 +33,24 @@ Upload the app icon from `main-site/SNG-512.png`.
 
 | Setting | Value |
 |---|---|
-| Installation Contexts | **Guild Install** only. Untick User Install: the reveal clock edits cards with the bot's own token, which needs the bot in the channel. The commands are declared server and DM only, so Discord keeps them off user installs anyway. |
+| Installation Contexts | **Guild Install** and **User Install** both ticked. |
 | Install Link | Discord Provided Link |
 | Guild Install scopes | `applications.commands`, `bot` |
 | Guild Install permissions | View Channels, Send Messages, Send Messages in Threads, Embed Links, Attach Files |
+| User Install scopes | `applications.commands` |
 
-Open the install link to add the bot to a server. Direct messages need no
-install: once you share a server with the bot, message it, or use its
-commands from its profile.
+The install link asks whether to add the bot to a server or to your account.
+
+- **Server**: the commands work in that server's channels, for everyone.
+- **Account**: the commands follow you into any server, DM or group DM,
+  including ones the bot is not in. There the bot sends and edits cards
+  through each command's own token, which Discord honours for 15 minutes, so
+  a card that is older than that stops revealing letters. Use `/hint` or
+  `/guess` to get a fresh card. A server can turn off external apps, and one
+  with more than 25 members shows their answers only to you.
+
+The bot's own DM works with either install. Plain messages are guesses only
+there.
 
 ## 5. Commands
 
@@ -59,7 +69,9 @@ commands`. `python commands.py` prints the list:
 ```
 
 A new or changed command can take a minute to show in the client. Restarting
-Discord makes it show at once.
+Discord makes it show at once. The sync also sends where each command may be
+used; commands synced before user installs were allowed stay off user installs
+until the bot restarts and syncs again.
 
 ## 6. `.env`
 

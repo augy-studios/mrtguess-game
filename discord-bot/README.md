@@ -1,8 +1,9 @@
 # discord-bot
 
 The Discord client for MRT Station Guesser. discord.py with slash commands,
-in servers and direct messages. First-time Developer Portal setup is in
-[`setup.md`](setup.md).
+installable on a server or on a user account, and usable in servers, the
+bot's direct messages, and other DMs and group DMs. First-time Developer
+Portal setup is in [`setup.md`](setup.md).
 
 ## Running it
 
@@ -34,6 +35,9 @@ differs:
 - `/play` sends a round card: the masked name, the letter count, the score,
   the line colour, and buttons to guess, buy the next hint, and give up.
 - The card edits itself as the clock reveals a letter every 15 seconds.
+  Where the bot is not in the channel (a user install), it edits through the
+  token of the command that sent the card, which lasts 15 minutes. After
+  that the card stops updating until `/hint` or `/guess` sends a fresh one.
 - Guesses come three ways. The card's **Guess** button opens a box, and a
   wrong guess there edits the card in place. `/guess station` sends a fresh
   card to the bottom and removes the old one (or, with old card removal off,
@@ -46,7 +50,8 @@ differs:
   saved, the player's Discord display name, with emoji and symbols dropped and
   cut to 20 characters. A typed name is remembered in its place; the Discord
   name is never saved, so it follows the account.
-- `/help` and `/settings` answer only the player who asked, in a server.
+- `/help` and `/settings` answer only the player who asked, everywhere but
+  the bot's own DM (where `/help` is shown normally).
   `/help` is the help; there is no `/start`.
 - `/settings` holds the same name and four switches as the Telegram bot,
   each redrawn in place when pressed:
@@ -67,7 +72,7 @@ shared with the Telegram bot or the PWA; the leaderboard is.
 | | |
 |---|---|
 | Game state, scores, answers | The API, in Supabase. The bot has no Supabase key. |
-| Buttons, the live card per player per channel, settings | `bot.sqlite3`, local and gitignored. |
+| Buttons, the live card per player per channel (with the token that can edit it), settings | `bot.sqlite3`, local and gitignored. |
 
 Buttons carry an opaque id looked up in SQLite, matched by pattern, so they
 keep working across restarts and cannot be forged. Losing `bot.sqlite3` costs
@@ -110,5 +115,8 @@ old buttons, the live cards' updates and everyone's settings, never a score.
    player can press the other's buttons.
 9. Direct message the bot: `/play`, then type a guess as a plain message.
 10. `/leaderboard`: a table, and the button swaps to total points in place.
-11. Restart the bot and press an old button: it still works.
-12. Start a second copy: refused with the first one's pid.
+11. Install the app to your account and, in a DM with a friend (or a server
+    without the bot), type `/`: the commands are listed. `/play` there, and
+    the card still reveals letters and takes hints from its buttons.
+12. Restart the bot and press an old button: it still works.
+13. Start a second copy: refused with the first one's pid.

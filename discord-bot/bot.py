@@ -77,13 +77,15 @@ class Bot(discord.Client):
         # Default intents only. Direct message text reaches a bot without the
         # privileged message content intent, and nothing else is read.
         super().__init__(intents=discord.Intents.default())
-        # Servers the bot is in, and its direct messages. Not installable on a
-        # user account: the reveal clock edits cards with the bot's own token,
-        # which needs the bot in the channel.
+        # Installable on a server and on a user account, and usable in
+        # servers, the bot's direct messages, and other DMs and group DMs.
+        # Where a user install puts the bot's commands in a channel the bot is
+        # not in, cards are edited through the interaction's own token
+        # (Game.card_hook).
         self.tree = app_commands.CommandTree(
             self,
-            allowed_contexts=app_commands.AppCommandContext(guild=True, dm_channel=True, private_channel=False),
-            allowed_installs=app_commands.AppInstallationType(guild=True, user=False),
+            allowed_contexts=app_commands.AppCommandContext(guild=True, dm_channel=True, private_channel=True),
+            allowed_installs=app_commands.AppInstallationType(guild=True, user=True),
         )
         self.config = config
         self.conn = db.connect(config.db_path)

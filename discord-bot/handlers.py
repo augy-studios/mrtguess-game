@@ -31,6 +31,9 @@ log = logging.getLogger("bot.handlers")
 
 GONE = {"round_not_found", "round_over", "round_expired"}
 
+# An interaction token works for 15 minutes; a minute spare for slow calls.
+HOOK_LIFE_S = 14 * 60
+
 # (channel id, user id): whose card, where.
 Key = tuple[int, int]
 
@@ -147,12 +150,14 @@ class Game:
     # Sending. A target is an interaction that has already been answered or
     # deferred, whose followup makes the new message, or a channel.
 
-    async def send(self, target, out: Out) -> int | None:
+    async def send(self, target, out: Out) -> db.Card:
+        """Sends a message and returns it as a card: its id and, when an
+        interaction sent it, that interaction's token and issue time."""
         if isinstance(target, discord.Interaction):
             msg = await target.followup.send(wait=True, **out.send_kwargs())
-        else:
-            msg = await target.send(**out.send_kwargs())
-        return msg.id
+            return msg.id, target.token, target.created_at.timestamp()
+        msg = await target.send(**out.send_kwargs())
+        return msg.id, None, None
 
     async def notice(self, target, text: str) -> None:
         """A one-line answer: only the player sees it when Discord allows."""
@@ -164,25 +169,38 @@ class Game:
         else:
             await target.send(text)
 
-    def message_at(self, channel_id: int, msg_id: int) -> discord.PartialMessage:
-        return self.client.get_partial_messageable(channel_id).get_partial_message(msg_id)
+    def card_hook(self, live) -> discord.Webhook | None:
+        """The webhook of the interaction that sent the card, while its token
+        lasts. Through a user install the bot is often not in the channel, so
+        its own token cannot touch the card, but the interaction's can."""
+        token, at = live["hook_token"], live["hook_at"]
+        if token and at and time.time() - at < HOOK_LIFE_S:
+            return discord.Webhook.partial(self.client.application_id, token, client=self.client)
+        return None
 
-    async def edit_at(self, channel_id: int, msg_id: int, out: Out) -> None:
+    async def edit_live(self, key: Key, live, **kwargs) -> None:
+        msg_id = live["msg_id"]
+        hook = self.card_hook(live)
         try:
-            await self.message_at(channel_id, msg_id).edit(**out.edit_kwargs())
-        except discord.HTTPException as err:
-            log.info("could not edit %s in %s: %r", msg_id, channel_id, err)
-
-    async def retire_card(self, key: Key, user_id: int, msg_id: int | None) -> None:
-        """An old round card goes, or with tidy chat off, stays without buttons."""
-        if not msg_id:
-            return
-        message = self.message_at(key[0], msg_id)
-        try:
-            if self.settings(user_id)["tidy_chat"]:
-                await message.delete()
+            if hook is not None:
+                await hook.edit_message(msg_id, **kwargs)
             else:
-                await message.edit(view=None)
+                await self.client.get_partial_messageable(key[0]).get_partial_message(msg_id).edit(**kwargs)
+        except discord.HTTPException as err:
+            log.info("could not edit %s in %s: %r", msg_id, key[0], err)
+
+    async def retire_card(self, key: Key, live) -> None:
+        """An old round card goes, or with tidy chat off, stays without buttons."""
+        if not self.settings(live["user_id"])["tidy_chat"]:
+            await self.edit_live(key, live, view=None)
+            return
+        msg_id = live["msg_id"]
+        hook = self.card_hook(live)
+        try:
+            if hook is not None:
+                await hook.delete_message(msg_id)
+            else:
+                await self.client.get_partial_messageable(key[0]).get_partial_message(msg_id).delete()
         except discord.HTTPException as err:  # a card left behind is harmless
             log.info("could not retire %s in %s: %r", msg_id, key[0], err)
 
@@ -204,24 +222,25 @@ class Game:
         view = await self.api.new_round(user_id)
         old = db.get_live(self.conn, *key)
         if old:
-            await self.retire_card(key, user_id, old["msg_id"])
-        msg_id = await self.send(target, await self.round_card(key, user_id, view))
-        db.set_live(self.conn, key[0], user_id, view["round_id"], msg_id, view)
+            await self.retire_card(key, old)
+        card = await self.send(target, await self.round_card(key, user_id, view))
+        db.set_live(self.conn, key[0], user_id, view["round_id"], card, view)
 
     async def replace_card(self, key: Key, live, view: dict, target, note: str | None = None) -> None:
-        await self.retire_card(key, live["user_id"], live["msg_id"])
-        msg_id = await self.send(target, await self.round_card(key, live["user_id"], view, note))
-        db.update_live(self.conn, *key, view, msg_id)
+        await self.retire_card(key, live)
+        card = await self.send(target, await self.round_card(key, live["user_id"], view, note))
+        db.update_live(self.conn, *key, view, card)
 
     async def edit_card(self, key: Key, live, view: dict, note: str | None = None) -> None:
-        await self.edit_at(key[0], live["msg_id"], await self.round_card(key, live["user_id"], view, note))
+        out = await self.round_card(key, live["user_id"], view, note)
+        await self.edit_live(key, live, **out.edit_kwargs())
         db.update_live(self.conn, *key, view)
 
     async def finish(self, key: Key, live, view: dict, target) -> None:
         user_id = live["user_id"]
         db.clear_live(self.conn, *key)
         self.maps.pop(key, None)
-        await self.retire_card(key, user_id, live["msg_id"])
+        await self.retire_card(key, live)
         if not view["solved"]:
             await self.send(target, self.out(views.gave_up_card(view, self.button, user_id)))
             return
@@ -409,8 +428,8 @@ class Game:
         self.remember(interaction.user)
         uid = interaction.user.id
         out = self.out(views.help_card(self.button, uid, self.config.site_url, self.config.donation_url))
-        # Only the asker needs the rules in a server channel.
-        await interaction.response.send_message(ephemeral=interaction.guild_id is not None, **out.send_kwargs())
+        # Only the asker needs the rules anywhere but their own chat with the bot.
+        await interaction.response.send_message(ephemeral=not interaction.context.dm_channel, **out.send_kwargs())
 
     async def on_dm_text(self, message: discord.Message) -> None:
         """A plain message in a direct message is a guess, as on Telegram."""
@@ -569,7 +588,8 @@ class Game:
 
             changed = view["mask"] != live["last_mask"] or view["score"] != live["last_score"] or view.get("expired")
             if changed:
-                await self.edit_at(key[0], live["msg_id"], await self.round_card(key, live["user_id"], view))
+                out = await self.round_card(key, live["user_id"], view)
+                await self.edit_live(key, live, **out.edit_kwargs())
             db.update_live(self.conn, *key, view)
             if view.get("expired"):
                 db.stop_ticking(self.conn, *key)
