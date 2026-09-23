@@ -1,6 +1,6 @@
 """The tier 3 hint as a picture: the rail network with no labels and no street
 map, and a ring where the station is. Leaflet draws the same thing in the PWA;
-Telegram needs a PNG. discord-bot/mapimage.py is a copy: keep the two alike.
+Discord needs a PNG. A copy of telegram-bot/mapimage.py: keep the two alike.
 """
 
 from __future__ import annotations

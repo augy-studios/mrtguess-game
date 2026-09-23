@@ -13,11 +13,11 @@ Telegram bot and a Discord bot.
 | `main-site/`, the PWA and the game API (`main-site/api/`) | Vercel, root directory `main-site` |
 | Database, `mrtguessr_*` tables | The shared uwuapps Supabase project |
 | `telegram-bot/` | The Debian 13 VPS, one process |
-| `discord-bot/` (not built yet) | The Debian 13 VPS, one process |
+| `discord-bot/` | The Debian 13 VPS, one process |
 
 **On the VPS: the two bots, one process each, and nothing else.** No cron, no
-database, no web server. The Telegram bot draws its map hint with Pillow in
-its own process. The bots never hold a Supabase key; they call the API.
+database, no web server. Each bot draws its map hint with Pillow in its own
+process. The bots never hold a Supabase key; they call the API.
 
 ## Layout
 
@@ -27,7 +27,7 @@ migrations/      SQL to run in the Supabase SQL editor
 scripts/         seed script and pre-deploy checks
 main-site/       the site Vercel deploys, including api/
 telegram-bot/    Telethon bot
-discord-bot/     discord.py bot, build step 5
+discord-bot/     discord.py bot
 ```
 
 The `uwuapps-*.md`, `update-bar-spec.md`, `telethon-richmessage-retrofit.md`
@@ -43,6 +43,7 @@ and `01-station-guess.md` files at the root are the specs this is built to.
    `SUPABASE_SERVICE_KEY` are already there.
 3. Deploy `main-site`.
 4. Set up the Telegram bot: `telegram-bot/setup.md`.
+5. Set up the Discord bot: `discord-bot/setup.md`.
 
 ## Before every deploy
 
@@ -66,7 +67,7 @@ Following the build order in `01-station-guess.md`:
 - [x] 3. Telegram bot
 - [x] Check the mechanic is fun on Telegram before going further
 - [x] 4. PWA game screen
-- [ ] 5. Discord bot
+- [x] 5. Discord bot
 
 All five hint tiers are in the API already, since the letter reveal is the
 core mechanic and the step 3 check needs it.
