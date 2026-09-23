@@ -12,7 +12,8 @@ import logging
 import time
 from collections import defaultdict
 
-from telethon import Button
+from telethon import Button, types, utils
+from telethon.tl import functions
 
 import db
 import mapimage
@@ -37,6 +38,8 @@ class Game:
         self.api = api
         self.config = config
         self.locks: defaultdict[int, asyncio.Lock] = defaultdict(asyncio.Lock)
+        # chat_id -> (round_id, InputPhoto): the map hint, uploaded once per round.
+        self.maps: dict[int, tuple[str, types.InputPhoto]] = {}
 
     def button(self, kind: str, label: str, **payload):
         return Button.inline(label, db.register_button(self.conn, kind, **payload))
@@ -70,13 +73,32 @@ class Game:
         except Exception as err:  # noqa: BLE001 - its buttons already refuse a finished round
             log.info("could not strip buttons from %s in %s: %r", msg_id, chat_id, err)
 
-    async def send_map(self, chat_id: int, user_id: int, view: dict) -> None:
+    async def map_photo(self, chat_id: int, user_id: int, view: dict):
+        """The round's map hint, uploaded without being sent so the card can
+        show it inline. Kept per chat so the clock's edits reuse it; after a
+        restart the next edit draws and uploads it again."""
         pos = view["hints"].get("position")
         if not pos:
-            return
+            return None
+        cached = self.maps.get(chat_id)
+        if cached and cached[0] == view["round_id"]:
+            return cached[1]
         style = self.settings(user_id)["map_style"]
-        image = await asyncio.to_thread(mapimage.render, self.config.lines_geojson, pos["lat"], pos["lon"], style)
-        await self.client.send_file(chat_id, image, caption="Map hint: the station is inside the ring.")
+        try:
+            image = await asyncio.to_thread(mapimage.render, self.config.lines_geojson, pos["lat"], pos["lon"], style)
+            uploaded = await self.client.upload_file(image, file_name="map.png")
+            media = await self.client(
+                functions.messages.UploadMediaRequest(peer=chat_id, media=types.InputMediaUploadedPhoto(file=uploaded))
+            )
+        except Exception as err:  # noqa: BLE001 - the card still goes out, without the picture
+            log.warning("could not upload the map for %s: %r", chat_id, err)
+            return None
+        photo = utils.get_input_photo(media.photo)
+        self.maps[chat_id] = (view["round_id"], photo)
+        return photo
+
+    async def round_card(self, chat_id: int, user_id: int, view: dict, note: str | None = None):
+        return views.round_card(view, self.button, user_id, note, await self.map_photo(chat_id, user_id, view))
 
     async def api_failed(self, chat_id: int, err: ApiError) -> None:
         if err.code in GONE:
@@ -96,17 +118,18 @@ class Game:
         old = db.get_live(self.conn, chat_id)
         if old:
             await self.retire_card(chat_id, user_id, old["msg_id"])
-        msg_id = await self.send(chat_id, views.round_card(view, self.button, user_id))
+        msg_id = await self.send(chat_id, await self.round_card(chat_id, user_id, view))
         db.set_live(self.conn, chat_id, user_id, view["round_id"], msg_id, view)
 
     async def replace_card(self, chat_id: int, live, view: dict, note: str | None = None) -> None:
         await self.retire_card(chat_id, live["user_id"], live["msg_id"])
-        msg_id = await self.send(chat_id, views.round_card(view, self.button, live["user_id"], note))
+        msg_id = await self.send(chat_id, await self.round_card(chat_id, live["user_id"], view, note))
         db.update_live(self.conn, chat_id, view, msg_id)
 
     async def finish(self, chat_id: int, live, view: dict) -> None:
         user_id = live["user_id"]
         db.clear_live(self.conn, chat_id)
+        self.maps.pop(chat_id, None)
         await self.retire_card(chat_id, user_id, live["msg_id"])
         if not view["solved"]:
             await self.send(chat_id, views.gave_up_card(view, self.button, user_id))
@@ -137,18 +160,14 @@ class Game:
 
     async def hint(self, chat_id: int, live, event=None) -> None:
         """Buys the next hint. From a button on the card, the card is edited in
-        place; otherwise a fresh card goes to the bottom."""
+        place; otherwise a fresh card goes to the bottom. The map hint shows
+        inside the card either way."""
         view = await self.api.hint(live["user_id"], live["round_id"])
-        new_map = view["hint_tier"] == 3 and view.get("penalty") == 150
         if event is not None:
-            rich, buttons = views.round_card(view, self.button, live["user_id"])
+            rich, buttons = await self.round_card(chat_id, live["user_id"], view)
             await r.edit_rich_message(self.client, event, rich, buttons)
             db.update_live(self.conn, chat_id, view)
-            if new_map:
-                await self.send_map(chat_id, live["user_id"], view)
         else:
-            if new_map:
-                await self.send_map(chat_id, live["user_id"], view)
             await self.replace_card(chat_id, live, view)
 
     async def ask_hint(self, chat_id: int, live, event=None) -> None:
@@ -369,7 +388,7 @@ class Game:
 
             changed = view["mask"] != live["last_mask"] or view["score"] != live["last_score"] or view.get("expired")
             if changed:
-                rich, buttons = views.round_card(view, self.button, live["user_id"])
+                rich, buttons = await self.round_card(chat_id, live["user_id"], view)
                 await r.edit_rich_message_at(self.client, chat_id, live["msg_id"], rich, buttons)
             db.update_live(self.conn, chat_id, view)
             if view.get("expired"):

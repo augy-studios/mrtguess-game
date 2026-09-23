@@ -40,7 +40,7 @@ def hint_lines(view: dict) -> list[dict]:
             label = "Lines" if len(line_names) > 1 else "Line"
             lines.append(r.para(f"{label}: {r.escape_md(names)}", f"{label}: {names}"))
     if "position" in hints:
-        lines.append(r.para("Map: in the picture sent with it", "Map: in the picture sent with it"))
+        lines.append(r.para("Map: the station is inside the ring below", "Map: the station is inside the ring"))
     if "name_zh" in hints:
         zh = hints["name_zh"]
         lines.append(r.para(f"Chinese name: **{r.escape_md(zh)}**", f"Chinese name: {zh}"))
@@ -57,7 +57,8 @@ def round_buttons(view: dict, button, user_id: int):
     return [row]
 
 
-def round_card(view: dict, button, user_id: int, note: str | None = None):
+def round_card(view: dict, button, user_id: int, note: str | None = None, map_photo=None):
+    """`map_photo` is the uploaded map hint, shown inside the card."""
     letters = view["length"]
     parts = []
     if note:
@@ -71,6 +72,8 @@ def round_card(view: dict, button, user_id: int, note: str | None = None):
         )
     )
     parts.append(r.join(hint_lines(view), "\n"))
+    if map_photo is not None:
+        parts.append(r.photo("map", map_photo))
 
     if view.get("expired"):
         parts.append(r.text("This round has timed out. Give up to see the answer."))

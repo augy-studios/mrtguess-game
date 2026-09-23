@@ -30,13 +30,20 @@ def escape_cell(text) -> str:
     return escape_md(str(text).replace("\n", " "))
 
 
-def rich(markdown: str, fallback: str) -> dict:
-    return {"markdown": markdown, "fallback": fallback}
+def rich(markdown: str, fallback: str, files: list | None = None) -> dict:
+    out = {"markdown": markdown, "fallback": fallback}
+    if files:
+        out["files"] = files
+    return out
 
 
 def join(parts, sep: str = "\n\n") -> dict:
     kept = [p for p in parts if p and (p["markdown"] or p["fallback"])]
-    return rich(sep.join(p["markdown"] for p in kept), sep.join(p["fallback"] for p in kept))
+    return rich(
+        sep.join(p["markdown"] for p in kept if p["markdown"]),
+        sep.join(p["fallback"] for p in kept if p["fallback"]),
+        [f for p in kept for f in p.get("files", [])],
+    )
 
 
 def heading(text: str, level: int = 1) -> dict:
@@ -68,6 +75,12 @@ def numbered(items: list[dict]) -> dict:
     )
 
 
+def photo(file_id: str, input_photo) -> dict:
+    """An uploaded photo shown inside the message, as its own block. It has
+    no plain twin: a message that falls back to plain text loses it."""
+    return rich(f"![](tg://photo?id={file_id})", "", [types.InputRichFilePhoto(id=file_id, photo=input_photo)])
+
+
 def table(headers: list[str], rows: list[list]) -> dict:
     md = [
         "| " + " | ".join(escape_cell(h) for h in headers) + " |",
@@ -82,7 +95,7 @@ def table(headers: list[str], rows: list[list]) -> dict:
 
 
 def _rich_markdown(reply):
-    return types.InputRichMessageMarkdown(markdown=reply["markdown"])
+    return types.InputRichMessageMarkdown(markdown=reply["markdown"], files=reply.get("files") or None)
 
 
 # Editing without reply_markup keeps the old keyboard; an empty inline

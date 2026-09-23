@@ -30,8 +30,10 @@ variable listed.
 - Any message that is not a command is a guess. A wrong guess brings a fresh
   card to the bottom of the chat and deletes the old one (or, with old card
   removal off, leaves it without buttons).
-- The map hint arrives as a picture: the network, no labels, a ring on the
-  station.
+- The map hint is a picture inside the round card, not a separate message:
+  the network, no labels, a ring on the station. It is uploaded once per round
+  and attached to the card's rich message with a `tg://photo?id=map` link, so
+  the clock's edits and fresh cards after a guess keep it.
 - A solved round offers "Add to leaderboard", which asks for a name in the
   next message. The name is remembered, so later solves offer `Add as
   NAME` in one tap, and "Another name".
@@ -91,8 +93,9 @@ appear. There is no inline mode, so no inline results.
 2. `/play`: a card with a code block mask. Wait 15 seconds: a letter appears
    in place and the score drops by 60.
 3. Send a wrong guess: a new card at the bottom saying so, the old one gone.
-4. Press the hint button three times: code, then map (a picture arrives),
-   then the Chinese name.
+4. Press the hint button three times: code, then map (the card redraws in
+   place with the picture inside it, and no new message arrives), then the
+   Chinese name. Wait for a letter: the map stays on the card.
 5. Guess right: the answer card, with Add to leaderboard and Play again.
 6. Add to leaderboard, send a rude name (refused, asks again), then a good one.
 7. Solve another: the card offers `Add as NAME`, with that name. Press it.
