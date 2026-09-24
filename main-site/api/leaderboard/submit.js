@@ -13,6 +13,10 @@ const REFUSALS = {
   unfinished: [409, "Only a solved round can go on the leaderboard."],
   already_submitted: [409, "That round is already on the leaderboard."],
   expired: [410, "That round is more than an hour old."],
+  // Anti-cheat, see migrations/004. The round still counts as solved; it just
+  // stays off the boards.
+  too_fast: [409, "That round was solved too quickly to count. Rounds solved in under 3 seconds stay off the leaderboard."],
+  overlap: [409, "That round was played at the same time as another round already on the leaderboard under this name."],
 };
 
 export default endpoint("POST", async ({ body }) => {

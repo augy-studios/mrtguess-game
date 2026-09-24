@@ -56,7 +56,8 @@ The round view:
 
 Errors are `{ "error": code, "message"? }` with a matching status: `400` bad
 input, `401` bad bot token, `404` no such round, `409` round over or no more
-hints, `410` round or submission expired.
+hints or a submission refused by anti-cheat, `410` round or submission
+expired.
 
 ## Leaderboards
 
@@ -70,6 +71,20 @@ case-insensitively:
 
 Only submitted rounds count towards either, since a round has no name until
 it is submitted. Submit returns the name's place on both.
+
+### Anti-cheat
+
+The answer and the score never come from a client, so the cheats left are
+scripts. `mrtguessr_submit` refuses two kinds of round with a `409`; the round
+still plays and scores as normal, it just stays off the boards:
+
+| Code | Refused when |
+|---|---|
+| `too_fast` | solved under 3 s after the round started, quicker than a person can read the mask and type |
+| `overlap` | its play time overlaps another round already on the board under the same name |
+
+Both are checked in `migrations/004_mrtguessr_anti_cheat.sql`. Neither stops
+a patient script that waits and plays one round at a time.
 
 ## Rules
 

@@ -252,11 +252,12 @@ class Game:
                 submitted = await self.api.submit(view["round_id"], prefs["name"])
             except ApiError as err:
                 which = "Discord name" if prefs["name_is_default"] else "saved name"
-                note = (
-                    f"Your {which} was refused, so this round was not added. Set another in /settings."
-                    if err.status == 400
-                    else "This round could not be added automatically. Try the button."
-                )
+                if err.status == 400:
+                    note = f"Your {which} was refused, so this round was not added. Set another in /settings."
+                elif err.status in (409, 410) and err.message:
+                    note = err.message
+                else:
+                    note = "This round could not be added automatically. Try the button."
         await self.send(
             target,
             self.out(views.solved_card(view, self.button, user_id, prefs["name"], submitted=submitted, note=note)),
