@@ -1,7 +1,7 @@
-// Request plumbing shared by every endpoint: auth, rate limits, replies.
+// Request plumbing shared by every endpoint: auth, input checks, replies.
 
 import { createHash, timingSafeEqual } from "node:crypto";
-import { configured, rpc, UpstreamError } from "./supabase.js";
+import { configured, UpstreamError } from "./supabase.js";
 
 export class HttpError extends Error {
   constructor(status, code, message, extra) {
@@ -25,35 +25,6 @@ export function isBot(req) {
     throw new HttpError(401, "bad_token");
   }
   return true;
-}
-
-// Vercel sets both from the connecting address; neither can be forged from
-// outside. The first x-forwarded-for entry is the fallback.
-export function clientIp(req) {
-  return (
-    req.headers["x-real-ip"] ||
-    String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
-}
-
-// Per IP, per action, fixed window. Bots are exempt: every Telegram player
-// arrives from the one VPS address. Fails open, since a broken limiter
-// should not take the game down with it.
-export async function rateLimit(req, bot, action, max, windowSeconds = 60) {
-  if (bot) return;
-  try {
-    const allowed = await rpc("mrtguessr_hit", {
-      p_bucket: `${action}:${clientIp(req)}`,
-      p_window_seconds: windowSeconds,
-      p_max: max,
-    });
-    if (allowed === false) throw new HttpError(429, "rate_limited", "Slow down a little and try again.");
-  } catch (err) {
-    if (err instanceof HttpError) throw err;
-    console.warn("rate limit check failed, allowing:", err.message);
-  }
 }
 
 // Browsers generate a random key once; bots use "tg:<user id>" or

@@ -2,11 +2,10 @@
 // Ends the round with no score. The reply names the station, which is safe
 // now that nothing can be guessed.
 
-import { clientKey, endpoint, rateLimit, roundId } from "../_lib/http.js";
+import { clientKey, endpoint, roundId } from "../_lib/http.js";
 import { applyGiveUp, assertPlayable, updateRound, view } from "../_lib/game.js";
 
-export default endpoint("POST", async ({ req, bot, body }) => {
-  await rateLimit(req, bot, "giveup", 20);
+export default endpoint("POST", async ({ bot, body }) => {
   const id = roundId(body.round_id);
   const key = clientKey(body.client_key, bot);
 

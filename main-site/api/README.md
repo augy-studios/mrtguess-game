@@ -56,7 +56,7 @@ The round view:
 
 Errors are `{ "error": code, "message"? }` with a matching status: `400` bad
 input, `401` bad bot token, `404` no such round, `409` round over or no more
-hints, `410` round or submission expired, `429` rate limited.
+hints, `410` round or submission expired.
 
 ## Leaderboards
 
@@ -91,12 +91,11 @@ Letters stop at half the name, from the clock and hints together. Rounds
 expire after an hour. Guesses ignore case, spaces, hyphens and accents, so
 `toapayoh` is Toa Payoh.
 
-## Auth and limits
+## Auth
 
 Bots send `Authorization: Bearer <BOT_API_TOKEN>`. A wrong token is a `401`,
-not a fallback to browser rules. Browsers send nothing and are rate limited by
-IP through `mrtguessr_hit`; bots are not, since every Telegram player shares
-the VPS's address. Submissions are 5 per 10 minutes per IP.
+not a fallback to browser rules. Browsers send nothing. There are no rate
+limits.
 
 ## Files
 
@@ -104,7 +103,7 @@ the VPS's address. Submissions are 5 per 10 minutes per IP.
 |---|---|
 | `round/*.js`, `leaderboard/*.js` | The endpoints. |
 | `_lib/game.js` | Rules, the mask, the clock, the round view, optimistic updates. |
-| `_lib/http.js` | Auth, rate limits, input checks, error replies. |
+| `_lib/http.js` | Auth, input checks, error replies. |
 | `_lib/names.js` | Leaderboard name cleaning and the English and Chinese word filter. |
 | `_lib/lines.js` | Line codes, names and colours. |
 | `_lib/supabase.js` | Supabase REST with the service role key. |

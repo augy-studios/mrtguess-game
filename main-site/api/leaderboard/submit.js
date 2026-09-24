@@ -4,7 +4,7 @@
 // are the cumulative one. The score is read from the round, never taken from
 // the request.
 
-import { endpoint, HttpError, rateLimit, roundId } from "../_lib/http.js";
+import { endpoint, HttpError, roundId } from "../_lib/http.js";
 import { cleanName } from "../_lib/names.js";
 import { rpc } from "../_lib/supabase.js";
 
@@ -15,8 +15,7 @@ const REFUSALS = {
   expired: [410, "That round is more than an hour old."],
 };
 
-export default endpoint("POST", async ({ req, bot, body }) => {
-  await rateLimit(req, bot, "submit", 5, 600);
+export default endpoint("POST", async ({ body }) => {
   const id = roundId(body.round_id);
   const name = cleanName(body.name);
 
