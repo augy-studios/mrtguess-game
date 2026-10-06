@@ -8,9 +8,10 @@ export const LINES = {
   CC: { name: "Circle Line", color: "#fa9e0d", colorName: "orange" },
   DT: { name: "Downtown Line", color: "#005ec4", colorName: "blue" },
   TE: { name: "Thomson-East Coast Line", color: "#9d5b25", colorName: "brown" },
-  BP: { name: "Bukit Panjang LRT", color: "#748477", colorName: "grey" },
-  SK: { name: "Sengkang LRT", color: "#748477", colorName: "grey" },
-  PG: { name: "Punggol LRT", color: "#748477", colorName: "grey" },
+  // The LRTs share a grey; the letter says which one, to make them easier.
+  BP: { name: "Bukit Panjang LRT", color: "#748477", colorName: "grey(B)" },
+  SK: { name: "Sengkang LRT", color: "#748477", colorName: "grey(S)" },
+  PG: { name: "Punggol LRT", color: "#748477", colorName: "grey(P)" },
 };
 
 export const PREFIXES = {
@@ -18,12 +19,12 @@ export const PREFIXES = {
   BP: "BP", SE: "SK", SW: "SK", STC: "SK", PE: "PG", PW: "PG", PTC: "PG",
 };
 
-// Tier 1: colours only. The three LRTs share a grey, so it appears once.
+// Tier 1: colours only, each colour name once.
 export function colorsFor(lineCodes) {
   const seen = new Map();
   for (const code of lineCodes) {
     const line = LINES[code];
-    if (line && !seen.has(line.color)) seen.set(line.color, { hex: line.color, name: line.colorName });
+    if (line && !seen.has(line.colorName)) seen.set(line.colorName, { hex: line.color, name: line.colorName });
   }
   return [...seen.values()];
 }
