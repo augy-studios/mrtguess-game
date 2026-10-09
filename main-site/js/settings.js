@@ -2,13 +2,14 @@
 // this browser. The bot's "remove old round cards" has no page to tidy here.
 
 import { api } from "./api.js";
+import { cleanDifficulty, cleanTurn } from "./rules.js";
 import { openModal } from "./ui.js";
 
 const STORAGE = "mrtguessr.settings";
 // Where the name lived before there were settings.
 const OLD_NAME = "mrtguessr.name";
 
-const DEFAULTS = { name: null, auto_submit: false, confirm_hints: false, map_style: "page" };
+const DEFAULTS = { name: null, auto_submit: false, confirm_hints: false, map_style: "page", difficulty: "normal", turn_seconds: null };
 const MAP_STYLES = ["page", "light", "dark"];
 
 let current = null;
@@ -26,6 +27,8 @@ function load() {
   out.auto_submit = saved.auto_submit === true;
   out.confirm_hints = saved.confirm_hints === true;
   if (MAP_STYLES.includes(saved.map_style)) out.map_style = saved.map_style;
+  out.difficulty = cleanDifficulty(saved.difficulty);
+  out.turn_seconds = cleanTurn(saved.turn_seconds);
   // Adding rounds automatically needs a name to add them under.
   if (!out.name) out.auto_submit = false;
   return out;
@@ -52,10 +55,11 @@ export function saveSettings(changes) {
 
 // "page" follows light or dark mode; the others pin the map to one.
 export function applyMapStyle() {
-  const map = document.getElementById("map");
   const style = getSettings().map_style;
-  if (style === "page") delete map.dataset.mapStyle;
-  else map.dataset.mapStyle = style;
+  document.querySelectorAll(".map").forEach((map) => {
+    if (style === "page") delete map.dataset.mapStyle;
+    else map.dataset.mapStyle = style;
+  });
 }
 
 const $ = (id) => document.getElementById(id);
@@ -74,11 +78,15 @@ function render() {
   auto.disabled = !s.name;
   $("autoNote").classList.toggle("hidden", Boolean(s.name));
 
-  document.querySelectorAll("#mapStyleToggle [data-map-style]").forEach((el) => {
-    const on = el.dataset.mapStyle === s.map_style;
-    el.classList.toggle("active", on);
-    el.setAttribute("aria-pressed", String(on));
-  });
+  const press = (selector, isOn) =>
+    document.querySelectorAll(selector).forEach((el) => {
+      const on = isOn(el);
+      el.classList.toggle("active", on);
+      el.setAttribute("aria-pressed", String(on));
+    });
+  press("#mapStyleToggle [data-map-style]", (el) => el.dataset.mapStyle === s.map_style);
+  press("#difficultyToggle [data-difficulty]", (el) => el.dataset.difficulty === s.difficulty);
+  press("#turnToggle [data-turn]", (el) => cleanTurn(el.dataset.turn) === s.turn_seconds);
 }
 
 async function onSaveName(event) {
@@ -130,5 +138,13 @@ export function initSettings() {
   $("mapStyleToggle").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-map-style]");
     if (btn) saveSettings({ map_style: btn.dataset.mapStyle });
+  });
+  $("difficultyToggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-difficulty]");
+    if (btn) saveSettings({ difficulty: cleanDifficulty(btn.dataset.difficulty) });
+  });
+  $("turnToggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-turn]");
+    if (btn) saveSettings({ turn_seconds: cleanTurn(btn.dataset.turn) });
   });
 }

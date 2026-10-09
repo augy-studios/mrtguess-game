@@ -30,7 +30,7 @@ STATIONS = ROOT / "main-site" / "data" / "stations.geojson"
 TABLE = "mrtguessr_stations"
 
 # Station code prefix to line code. Must match PREFIXES in
-# main-site/api/_lib/lines.js.
+# main-site/js/rules.js.
 PREFIX_TO_LINE = {
     "NS": "NS",
     "EW": "EW",

@@ -33,6 +33,15 @@ export const icons = {
   offline: svg(
     `<path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 6-.8M5 13a10 10 0 0 1 4.2-2.6M12.8 10.1A10 10 0 0 1 19 13M2 9.5a15 15 0 0 1 4.3-2.8M10.5 5.6A15 15 0 0 1 22 9.5"/><circle cx="12" cy="19.5" r=".6" fill="currentColor"/>`
   ),
+  users: svg(
+    `<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.2A6.5 6.5 0 0 1 21.5 20"/>`
+  ),
+  copy: svg(`<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>`),
+  share: svg(`<path d="M12 15V3.5M7.5 8 12 3.5 16.5 8"/><path d="M5 12.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5.5"/>`),
+  play: svg(`<path d="M8 5.5v13l10.5-6.5L8 5.5Z"/>`),
+  pause: svg(`<path d="M8.5 5.5v13M15.5 5.5v13"/>`),
+  chevronLeft: svg(`<path d="m14.5 6-6 6 6 6"/>`),
+  chevronRight: svg(`<path d="m9.5 6 6 6-6 6"/>`),
   heartFilled: svg(
     `<path d="M12 20.2 4.9 13a5 5 0 0 1 7.1-7l0 0a5 5 0 0 1 7.1 7L12 20.2Z" fill="currentColor" stroke="none"/>`
   ),

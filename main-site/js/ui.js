@@ -19,6 +19,22 @@ export function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+// Which card the page shows: the solo round, a party game, or a replay. The
+// others are hidden, and "mrt:view" tells anything that cares, such as the
+// solo round's clock, which pauses while it is out of sight.
+const VIEWS = ["solo", "party", "replay"];
+let view = "solo";
+
+export function showView(name) {
+  if (!VIEWS.includes(name)) return;
+  for (const id of VIEWS) document.getElementById(id).hidden = id !== name;
+  if (view === name) return;
+  view = name;
+  document.dispatchEvent(new CustomEvent("mrt:view", { detail: name }));
+}
+
+export const currentView = () => view;
+
 // Focus goes into the modal on open and back to the opener on close.
 const openers = new Map();
 

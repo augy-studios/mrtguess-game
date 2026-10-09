@@ -4,7 +4,9 @@ Guess the Singapore MRT or LRT station from its masked name. A letter shows
 every 15 seconds, Skribbl style, and every letter and hint costs points.
 
 Live at <https://mrtguessr.uwuapps.org>. Three clients over one API: a PWA, a
-Telegram bot and a Discord bot.
+Telegram bot and a Discord bot. The PWA also plays party games, up to eight
+people on one wifi with no server in between, and shares replays of solo
+rounds and party games as links.
 
 ## What runs where
 
@@ -30,8 +32,9 @@ telegram-bot/    Telethon bot
 discord-bot/     discord.py bot
 ```
 
-The `uwuapps-*.md`, `update-bar-spec.md`, `telethon-richmessage-retrofit.md`
-and `01-station-guess.md` files at the root are the specs this is built to.
+The `uwuapps-*.md`, `update-bar-spec.md`, `telethon-richmessage-retrofit.md`,
+`STUN-p2p-spec.md` and `01-station-guess.md` files at the root are the specs
+this is built to.
 
 ## First setup
 

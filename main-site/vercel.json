@@ -6,5 +6,11 @@
     "rewrites": [{
         "source": "/",
         "destination": "/"
+    }, {
+        "source": "/join",
+        "destination": "/"
+    }, {
+        "source": "/r/:id([A-Za-z0-9]{8})",
+        "destination": "/"
     }]
 }

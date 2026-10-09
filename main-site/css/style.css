@@ -589,6 +589,287 @@ body {
   color: var(--muted-strong);
 }
 
+/* Three cards share the page: the solo round, a party game and a replay.
+   Only one shows; js/ui.js showView() sets `hidden` on the others. */
+.card[hidden] { display: none; }
+
+#partyBtn[aria-pressed="true"] {
+  background: var(--brand-fill);
+  color: var(--on-brand);
+}
+
+/* The time limit, solo and party: drains left to right. */
+.time-bar {
+  width: min(260px, 80%);
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-strong);
+}
+.time-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--ok);
+  transform-origin: left center;
+  transition: transform 0.25s linear;
+}
+.time-bar.low > span { background: var(--error); }
+.time-left { font-variant-numeric: tabular-nums; }
+.card .round-meta { flex-wrap: wrap; justify-content: center; }
+
+/* The party's next-letter bar is drawn from snapshots, not a CSS timer. */
+.reveal-bar.meter .reveal-fill {
+  animation: none;
+  transform: scaleX(0);
+  transition: transform 0.1s linear;
+}
+
+.card .result-breakdown {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.card .share-msg {
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Party games. */
+.party-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 6px 6px 12px;
+  border-radius: 14px;
+  background: var(--surface-strong);
+  font-size: 0.85rem;
+  text-align: left;
+}
+.party-bar-text { flex: 1; min-width: 0; color: var(--ink); }
+.party-bar .btn { padding: 6px 12px; flex-shrink: 0; }
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--busy);
+}
+.status-dot.ok { background: var(--ok); }
+.status-dot.warn { background: var(--warn); }
+.status-dot.error { background: var(--error); }
+
+.panel-title {
+  font-size: 1.3rem;
+  font-weight: normal;
+  color: var(--brand-ink);
+}
+.name-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  max-width: 280px;
+  text-align: left;
+}
+.card .party-or { color: var(--muted); font-size: 0.9rem; }
+.code-field {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+.code-field::placeholder { letter-spacing: normal; }
+.card .party-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.card .block-label {
+  font-size: 0.85rem;
+  color: var(--muted-strong);
+}
+.invite,
+.lobby-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+.lobby-block .mode-toggle { width: 100%; }
+.mode-toggle.quarters { grid-template-columns: repeat(4, 1fr); }
+
+/* The code in large type, read across a room. */
+.party-code {
+  font-size: clamp(2rem, 11vw, 3rem);
+  letter-spacing: 0.18em;
+  padding: 2px 6px 2px 14px;
+  border-radius: 14px;
+  color: var(--brand-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* Centred, black on white whatever the theme, with its quiet zone, so a
+   phone pointed at the middle of the screen finds it. */
+.qr {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.qr svg {
+  width: min(220px, 60vw);
+  height: auto;
+  border-radius: 10px;
+}
+.qr .qr-bg { fill: #ffffff; }
+.qr .qr-fg { fill: #000000; }
+.card .party-link {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.custom-length {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+.custom-length .field { width: 6em; flex: none; text-align: center; }
+.card .settings-text { color: var(--ink); }
+.card .scoring-note { max-width: 440px; margin-top: 0; }
+
+.player-list {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  max-width: 440px;
+  list-style: none;
+}
+.player-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-align: left;
+}
+.player-list li.away { opacity: 0.6; }
+.player-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  font-size: 0.75rem;
+  color: var(--muted-strong);
+}
+.player-list.compact li { min-height: 0; padding: 6px 12px; font-size: 0.9rem; }
+.player-list .state { font-size: 0.8rem; color: var(--muted-strong); }
+.player-list .state.solved { color: var(--ok); }
+.player-list .state.gave_up,
+.player-list .state.out { color: var(--warn); }
+.player-list .total {
+  min-width: 3.5em;
+  text-align: right;
+  color: var(--brand-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ready-title { font-size: 1.2rem; color: var(--brand-ink); }
+.ready-count {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.standings { max-width: 440px; }
+.standings tr.me td { color: var(--brand-ink); }
+.standings td:last-child,
+.standings th:last-child { text-align: right; }
+
+/* Replays. */
+.replay-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.card .replay-meta { font-size: 0.9rem; color: var(--ink); }
+.card .replay-trust { font-size: 0.8rem; color: var(--muted); }
+.turn-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+}
+.replay-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+}
+.scrub {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--brand-ink);
+}
+#rvSpeed { width: 100%; max-width: 440px; }
+.player-list.picks li { padding: 0; background: none; }
+.player-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-align: left;
+}
+.player-pick.active { border-color: var(--brand-ink); }
+.player-state { font-size: 0.8rem; color: var(--muted-strong); text-align: right; }
+.replay-log {
+  width: 100%;
+  max-width: 440px;
+  max-height: 220px;
+  overflow-y: auto;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--ink);
+  text-align: left;
+}
+.replay-log li { display: flex; gap: 10px; }
+.log-time {
+  flex-shrink: 0;
+  min-width: 2.6em;
+  color: var(--muted-strong);
+  font-variant-numeric: tabular-nums;
+}
+.log-empty { color: var(--muted); }
+
 /* Update bar, per update-bar-spec.md. Quieter than the header, full width,
    tinted enough to read as a notice. */
 .update-notice {
@@ -636,6 +917,8 @@ body {
     white-space: nowrap;
   }
   .topbar-actions { gap: 6px; }
+  /* Five header buttons at 320px. */
+  .topbar-actions .icon-btn { width: 38px; height: 38px; }
   .game { padding: 18px 14px; }
   .result-title { font-size: 1.5rem; }
   .update-notice-inner { flex-wrap: wrap; }

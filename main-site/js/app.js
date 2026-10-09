@@ -4,6 +4,8 @@ import { initUpdateBar } from "./update-bar.js";
 import { initGame } from "./game.js";
 import { initLeaderboard } from "./leaderboard.js";
 import { initSettings } from "./settings.js";
+import { initParty } from "./party.js";
+import { initReplay } from "./replay.js";
 
 /* Theme modal, per uwuapps-theme.md section 6. */
 
@@ -92,7 +94,10 @@ function boot() {
   wireModals();
   initLeaderboard();
   initSettings();
-  initGame();
+  // A replay link, a join link or a game this tab was already in opens on
+  // that card; the solo round then waits until somebody goes back to it.
+  const elsewhere = initReplay() || initParty();
+  initGame({ autostart: !elsewhere });
   initUpdateBar();
 }
 

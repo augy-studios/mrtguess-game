@@ -1,7 +1,10 @@
 # api
 
-Vercel serverless functions. The only place game rules exist; the PWA and
-both bots call these endpoints and hold no rules of their own.
+Vercel serverless functions. Solo rounds are played here; the PWA and both
+bots call these endpoints and hold no rules of their own. The rules are in
+`../js/rules.js`, a pure module the page shares for party games and replays,
+which have no server to ask. `_lib/game.js` imports it, so a solo round and a
+replay of it always score the same.
 
 **The answer never leaves the server while a round is live.** A round's
 station is a row id in `mrtguessr_rounds`. Replies carry the mask, the hints
@@ -16,7 +19,7 @@ A round is only visible to the key that started it.
 
 | Endpoint | Body | Returns |
 |---|---|---|
-| `POST /api/round/new` | `client_key` | the round view |
+| `POST /api/round/new` | `client_key`, `difficulty?`, `turn_seconds?` | the round view |
 | `POST /api/round/guess` | `round_id, client_key, guess` | `correct` plus the round view |
 | `POST /api/round/hint` | `round_id, client_key` | `penalty` plus the round view |
 | `POST /api/round/state` | `round_id, client_key` | the round view, with due letters revealed |
@@ -24,6 +27,8 @@ A round is only visible to the key that started it.
 | `POST /api/leaderboard/submit` | `round_id, name` | `name, rank, best_score, total, rounds, total_rank` |
 | `POST /api/leaderboard/name` | `name` | `name`, cleaned, or a `400` saying why not |
 | `GET /api/leaderboard` | `?board=best` (default) or `?board=total` | `board, entries`, cached 30 s |
+| `POST /api/replay/create` | `round_id, client_key, name?` for a solo round, or `replay` for a party game | `id`, for the link `/r/<id>` |
+| `GET /api/replay` | `?id=<id>` | `id, kind, verified, created_at, replay`, cached a day |
 
 `state`, `giveup` and `name` are additions to the spec's list: clients poll
 `state` at `next_reveal_in` to show letters appearing, `giveup` lets a stuck
@@ -50,9 +55,18 @@ The round view:
   "expired": false,
   "next_reveal_in": 9500,
   "next_hint": { "tier": 3, "penalty": 150 },
-  "created_at": "…"
+  "created_at": "…",
+  "difficulty": "normal",
+  "turn_seconds": 60,
+  "time_left": 41500
 }
 ```
+
+`difficulty` is `easy`, `normal` or `hard`, and `turn_seconds` 30, 60, 120 or
+`null` for no limit; a round started without them is normal with no limit,
+which is what the bots get. `time_left` is null without a limit. A solved
+round adds `scoring: { base, difficulty, timer, speed, points, time_ms }`,
+the multipliers that turned the base into `score`.
 
 Errors are `{ "error": code, "message"? }` with a matching status: `400` bad
 input, `401` bad bot token, `404` no such round, `409` round over or no more
@@ -83,12 +97,26 @@ still plays and scores as normal, it just stays off the boards:
 | `too_fast` | solved under 3 s after the round started, quicker than a person can read the mask and type |
 | `overlap` | its play time overlaps another round already on the board under the same name |
 
-Both are checked in `migrations/004_mrtguessr_anti_cheat.sql`. Neither stops
+Both are checked in `migrations/004_mrtguessr_anti_cheat.sql`.
+
+## Replays
+
+A replay is the format in `../js/replay-format.js`: the settings, the
+players, and per station the letter order and each player's events. Scores
+are never stored in it; the player works them out again with `rules.js`.
+
+A solo replay is built here from the stored round, so it is `verified`. A
+party replay is whatever the host's page sends, cleaned, with names and
+guesses run through the leaderboard's word filter, and is not verified. Both
+are kept in `mrtguessr_replays` under an 8 character id, up to 256 KB each.
+Like every other endpoint, creating one has no rate limit. Neither stops
 a patient script that waits and plays one round at a time.
 
 ## Rules
 
-All in `_lib/game.js`.
+All in `../js/rules.js`. A round stores what the player did as events and the
+order its letters show in; everything else is worked out from those and the
+time, so reading a round writes nothing.
 
 | | Score |
 |---|---|
@@ -102,8 +130,24 @@ All in `_lib/game.js`.
 | Wrong guess | -20 |
 | Floor while playing | 50 |
 
-Letters stop at half the name, from the clock and hints together. Rounds
-expire after an hour. Guesses ignore case, spaces, hyphens and accents, so
+That is the base. A solved round scores the base times its multipliers,
+rounded:
+
+| Setting | Clock letter every | Letters stop at | Multiplier |
+|---|---|---|---|
+| Easy | 10 s | two thirds of the name | × 0.75 |
+| Normal | 15 s | half | × 1 |
+| Hard | 20 s | a third | × 1.5 |
+| No time limit | | | × 1, no speed bonus |
+| 2 minutes | | | × 1 |
+| 1 minute | | | × 1.2 |
+| 30 seconds | | | × 1.5 |
+| Speed, with any limit | | | × 1 to × 1.5, by the share of time left |
+
+Letters from the clock and hints together stop at the difficulty's share. A
+timed round runs out at its limit, with 2 s of grace for a guess already on
+its way; an untimed one expires after an hour. Rounds started before
+migration 006 read as expired. Guesses ignore case, spaces, hyphens and accents, so
 `toapayoh` is Toa Payoh.
 
 ## Auth
@@ -116,11 +160,11 @@ limits.
 
 | Path | What it is |
 |---|---|
-| `round/*.js`, `leaderboard/*.js` | The endpoints. |
-| `_lib/game.js` | Rules, the mask, the clock, the round view, optimistic updates. |
+| `round/*.js`, `leaderboard/*.js`, `replay/*.js` | The endpoints. |
+| `_lib/game.js` | Solo rounds on top of `../js/rules.js`: events, the round view, the solo replay, optimistic updates. |
 | `_lib/http.js` | Auth, input checks, error replies. |
 | `_lib/names.js` | Leaderboard name cleaning and the English and Chinese word filter. |
-| `_lib/lines.js` | Line codes, names and colours. |
+| `_lib/lines.js` | Re-exports the line codes, names and colours from `../js/rules.js`. |
 | `_lib/supabase.js` | Supabase REST with the service role key. |
 
 Vercel does not route files under `_lib/`.

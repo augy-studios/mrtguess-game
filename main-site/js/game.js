@@ -5,13 +5,13 @@ import { api } from "./api.js";
 import { openLeaderboard } from "./leaderboard.js";
 import { clearStation, showStation } from "./map.js";
 import { getSettings, saveSettings } from "./settings.js";
-import { escapeHtml, hydrateIcons } from "./ui.js";
+import { HINT_LABELS, describeTurn, difficultyOf } from "./rules.js";
+import { altNames, breakdown, clock, codeChips, hintRows, laterHintRows, maskMarkup } from "./round-view.js";
+import { shareLink, soloReplayLink } from "./replay.js";
+import { hydrateIcons } from "./ui.js";
 
 const ROUND_STORAGE = "mrtguessr.round";
 
-const HINT_LABELS = { 2: "Station code", 3: "Map", 4: "Chinese name", 5: "Letter" };
-// For the countdown bar only. The clock itself is the server's.
-const REVEAL_EVERY_MS = 15_000;
 const GONE = new Set(["round_not_found", "round_over", "round_expired"]);
 
 const $ = (id) => document.getElementById(id);
@@ -25,6 +25,13 @@ let busy = false;
 let seq = 0;
 let giveUpTimer = null;
 let hintTimer = null;
+// A timed round: when its time runs out, by this page's clock, and the
+// ticker that counts it down.
+let deadline = null;
+let clockTimer = null;
+// Hidden behind a party game or a replay: no polling, no countdown.
+let suspended = false;
+let started = false;
 
 const store = {
   get: (key) => {
@@ -51,8 +58,6 @@ const store = {
 };
 
 const isLive = (v) => v && !v.solved && !v.gave_up;
-const isLetter = (ch) => /\p{L}/u.test(ch);
-const safeHex = (hex) => (/^#[0-9a-f]{6}$/i.test(hex ?? "") ? hex : "#748477");
 
 function showPanel(id) {
   for (const panel of ["play", "result", "notice"]) $(panel).classList.toggle("hidden", panel !== id);
@@ -72,60 +77,16 @@ function focusGuess(force = false) {
 // Rendering the live round.
 
 function renderMask(mask) {
-  const before = [...shownMask];
-  const chars = [...mask];
-  const sameRound = before.length === chars.length;
-
-  const words = [[]];
-  chars.forEach((ch, i) => {
-    if (ch === " ") words.push([]);
-    else words.at(-1).push({ ch, i });
-  });
-
-  $("mask").innerHTML = words
-    .map(
-      (word) =>
-        `<span class="word">${word
-          .map(({ ch, i }) => {
-            if (ch === "_") return `<span class="tile blank"></span>`;
-            if (!isLetter(ch)) return `<span class="sep">${escapeHtml(ch)}</span>`;
-            const fresh = sameRound && before[i] === "_";
-            return `<span class="tile${fresh ? " fresh" : ""}">${escapeHtml(ch)}</span>`;
-          })
-          .join("")}</span>`
-    )
-    .join("");
-
-  const spoken = words.map((word) => word.map(({ ch }) => (ch === "_" ? "blank" : ch)).join(", ")).join("; next word: ");
-  $("mask").setAttribute("aria-label", `Station name: ${spoken}`);
+  const { html, label } = maskMarkup(mask, shownMask);
+  $("mask").innerHTML = html;
+  $("mask").setAttribute("aria-label", label);
   shownMask = mask;
-}
-
-function hintRow(label, content) {
-  return `<div class="hint-row"><dt>${label}</dt><dd>${content}</dd></div>`;
 }
 
 function renderHints(v) {
   const h = v.hints;
-  const rows = [
-    hintRow(
-      "Line colour",
-      h.colors
-        .map((c) => `<span class="chip"><span class="dot" style="--dot:${safeHex(c.hex)}"></span>${escapeHtml(c.name)}</span>`)
-        .join("")
-    ),
-  ];
-  if (h.codes?.length) {
-    rows.push(hintRow(h.codes.length > 1 ? "Codes" : "Code", h.codes.map((c) => `<span class="chip code">${escapeHtml(c)}</span>`).join("")));
-  }
-  if (h.line_names?.length) {
-    rows.push(hintRow(h.line_names.length > 1 ? "Lines" : "Line", escapeHtml(h.line_names.join(", "))));
-  }
-  $("hints").innerHTML = rows.join("");
-  // Bought after the map, so shown below it.
-  $("laterHints").innerHTML = h.name_zh
-    ? hintRow("Chinese name", `<span class="zh" lang="zh-Hans">${escapeHtml(h.name_zh)}</span>`)
-    : "";
+  $("hints").innerHTML = hintRows(h);
+  $("laterHints").innerHTML = laterHintRows(h);
 
   const mapBox = $("mapHint");
   if (h.position) {
@@ -142,22 +103,23 @@ function renderHints(v) {
   } else {
     mapBox.classList.add("hidden");
     delete mapBox.dataset.round;
-    clearStation();
+    clearStation($("map"));
   }
 }
 
 function renderReveal(v) {
+  const every = difficultyOf(v.difficulty).revealEveryMs;
   const bar = $("revealBar");
   const fill = bar.firstElementChild;
   let note;
   if (v.expired) {
-    note = "This round has timed out. Give up to see the answer.";
+    note = v.turn_seconds ? "Time is up." : "This round has timed out. Give up to see the answer.";
   } else if (v.next_reveal_in == null) {
     note = "No more letters will show on their own.";
   } else {
-    note = "Another letter shows every 15 seconds, for 60 points.";
-    const left = Math.min(v.next_reveal_in, REVEAL_EVERY_MS);
-    fill.style.setProperty("--from", String(1 - left / REVEAL_EVERY_MS));
+    note = `Another letter shows every ${every / 1000} seconds, for 60 points.`;
+    const left = Math.min(v.next_reveal_in, every);
+    fill.style.setProperty("--from", String(1 - left / every));
     fill.style.setProperty("--ms", `${left}ms`);
     // Restart the animation from where this reveal's wait stands.
     fill.style.animation = "none";
@@ -182,14 +144,67 @@ function renderActions(v) {
   $("giveUpBtn").disabled = busy;
 }
 
+function renderSettings(v) {
+  const bits = [difficultyOf(v.difficulty).label];
+  if (v.turn_seconds) bits.push(describeTurn(v.turn_seconds));
+  $("roundMode").textContent = bits.join(", ");
+}
+
 function render(v) {
   view = v;
   $("letterCount").textContent = `${v.length} letters`;
   $("score").textContent = v.score;
+  renderSettings(v);
   renderMask(v.mask);
   renderHints(v);
   renderReveal(v);
   renderActions(v);
+  startClock(v);
+}
+
+// The time limit. The server's clock is the one that counts; this one only
+// shows it, from time_left in the latest answer, and gives up for the player
+// when it runs out so the answer shows.
+
+function stopClock() {
+  clearInterval(clockTimer);
+  clockTimer = null;
+}
+
+function startClock(v) {
+  stopClock();
+  const timed = isLive(v) && v.time_left != null;
+  $("timeBar").classList.toggle("hidden", !timed);
+  $("timeLeft").classList.toggle("hidden", !timed);
+  if (!timed) {
+    deadline = null;
+    return;
+  }
+  deadline = performance.now() + v.time_left;
+  tickClock();
+  clockTimer = setInterval(tickClock, 250);
+}
+
+function tickClock() {
+  if (!view || deadline == null) return;
+  const left = Math.max(0, deadline - performance.now());
+  $("timeLeft").textContent = clock(left);
+  $("timeBar").firstElementChild.style.transform = `scaleX(${left / (view.turn_seconds * 1000)})`;
+  $("timeBar").classList.toggle("low", left < 10_000);
+  if (left > 0 || suspended) return;
+  stopClock();
+  timeUp();
+}
+
+function timeUp() {
+  if (!isLive(view)) return;
+  // A guess on its way is still judged; this waits for it.
+  if (busy) {
+    setTimeout(timeUp, 300);
+    return;
+  }
+  disarmGiveUp();
+  act(async () => finish(await api.giveUp(view.round_id), { timeUp: true }));
 }
 
 // The clock. The server reveals letters on its own schedule; the page asks
@@ -202,13 +217,13 @@ function stopPolling() {
 
 function schedulePoll() {
   stopPolling();
-  if (!isLive(view) || view.expired || view.next_reveal_in == null) return;
+  if (suspended || !isLive(view) || view.expired || view.next_reveal_in == null) return;
   pollTimer = setTimeout(poll, view.next_reveal_in + 400);
 }
 
 async function poll() {
   pollTimer = null;
-  if (!isLive(view) || document.hidden) return;
+  if (!isLive(view) || document.hidden || suspended) return;
   if (busy) {
     pollTimer = setTimeout(poll, 1000);
     return;
@@ -238,7 +253,7 @@ function failed(err) {
   const text =
     err.code === "offline"
       ? "No connection. Try again once you are back online."
-      : err.status === 429 || err.code === "no_more_hints" || err.code === "busy"
+      : err.status === 429 || err.code === "no_more_hints" || err.code === "busy" || err.code === "too_many"
         ? err.message
         : "The game server did not answer. Try again in a moment.";
   say(text, "error");
@@ -327,21 +342,22 @@ function onGiveUp() {
 
 // The end of a round.
 
-function finish(v) {
+function finish(v, { timeUp = false } = {}) {
   stopPolling();
+  stopClock();
   store.remove(ROUND_STORAGE);
   view = v;
   const a = v.answer;
 
-  $("resultTitle").textContent = v.solved ? a.name_en : `It was ${a.name_en}`;
-  const alt = [
-    a.name_zh ? `<span lang="zh-Hans">${escapeHtml(a.name_zh)}</span>` : "",
-    a.name_ta ? `<span lang="ta">${escapeHtml(a.name_ta)}</span>` : "",
-  ].filter(Boolean);
-  $("resultAlt").innerHTML = alt.join(" · ");
-  $("resultAlt").classList.toggle("hidden", !alt.length);
-  $("resultCodes").innerHTML = (a.codes ?? []).map((c) => `<span class="chip code">${escapeHtml(c)}</span>`).join("");
+  $("resultTitle").textContent = v.solved ? a.name_en : timeUp ? `Time is up. It was ${a.name_en}` : `It was ${a.name_en}`;
+  const alt = altNames(a);
+  $("resultAlt").innerHTML = alt;
+  $("resultAlt").classList.toggle("hidden", !alt);
+  $("resultCodes").innerHTML = codeChips(a.codes ?? []);
   $("resultScore").textContent = v.solved ? `Solved for ${v.score} points.` : "No points this round.";
+  const how = v.scoring ? breakdown(v.scoring, difficultyOf(v.difficulty).label) : "";
+  $("resultBreakdown").textContent = how ? `${how} = ${v.score}` : "";
+  $("resultBreakdown").classList.toggle("hidden", !how);
 
   const prefs = getSettings();
   $("submitForm").classList.toggle("hidden", !v.solved);
@@ -349,12 +365,33 @@ function finish(v) {
   $("submitMsg").textContent = "";
   $("nameInput").value = prefs.name ?? "";
   $("submitBtn").disabled = false;
+  $("shareReplayBtn").disabled = false;
+  $("shareMsg").textContent = "";
 
   showPanel("result");
   say("");
   $("playAgainBtn").focus();
 
   if (v.solved && prefs.auto_submit && prefs.name) submitAs(prefs.name, true);
+}
+
+async function onShareReplay() {
+  if (!view?.round_id) return;
+  const btn = $("shareReplayBtn");
+  const msg = $("shareMsg");
+  btn.disabled = true;
+  msg.textContent = "Making a link.";
+  try {
+    const url = await soloReplayLink(view.round_id, getSettings().name);
+    const how = await shareLink(url);
+    // Where it could not be shared or copied, the link itself, to copy by hand.
+    msg.textContent = how === "copied" ? "Replay link copied." : how === "failed" ? url : "";
+  } catch (err) {
+    msg.textContent =
+      err.code === "offline" ? "Making a replay link needs a connection." : err.message || "Could not make a link. Try again.";
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // Adds the round under a name, typed or saved. Any name that goes through
@@ -397,6 +434,7 @@ function onSubmit(event) {
 
 function showNotice(text, iconName = "flag") {
   stopPolling();
+  stopClock();
   $("notice").dataset.kind = iconName;
   $("noticeIcon").setAttribute("data-icon", iconName);
   hydrateIcons($("notice"));
@@ -441,7 +479,8 @@ async function newRound() {
   $("playAgainBtn").disabled = true;
   let v = null;
   try {
-    v = await api.newRound();
+    const { difficulty, turn_seconds } = getSettings();
+    v = await api.newRound({ difficulty, turn_seconds });
   } catch (err) {
     startFailed(err);
   }
@@ -477,6 +516,7 @@ let starting = false;
 async function start() {
   if (starting) return;
   starting = true;
+  started = true;
   $("noticeBtn").disabled = true;
   try {
     await resumeOrStart();
@@ -486,25 +526,51 @@ async function start() {
   }
 }
 
-export function initGame() {
+// Out of sight behind a party game or a replay, the round asks the server
+// nothing. Back in sight, it catches up at once; a timed round's clock is
+// the server's, so time spent elsewhere still counted.
+function pause() {
+  suspended = true;
+  stopPolling();
+}
+
+function resume() {
+  suspended = false;
+  if (!started) {
+    start();
+    return;
+  }
+  if (isLive(view)) {
+    stopPolling();
+    poll();
+    if (deadline != null) tickClock();
+  }
+}
+
+// autostart false leaves the first round for later: a page opened on a
+// party or replay link should not start a round nobody is looking at.
+export function initGame({ autostart = true } = {}) {
   $("guessForm").addEventListener("submit", onGuess);
   $("hintBtn").addEventListener("click", onHint);
   $("giveUpBtn").addEventListener("click", onGiveUp);
   $("submitForm").addEventListener("submit", onSubmit);
   $("playAgainBtn").addEventListener("click", newRound);
   $("resultBoardBtn").addEventListener("click", () => openLeaderboard());
+  $("shareReplayBtn").addEventListener("click", onShareReplay);
   $("noticeBtn").addEventListener("click", start);
 
+  document.addEventListener("mrt:view", (e) => (e.detail === "solo" ? resume() : pause()));
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && isLive(view) && !view.expired) {
+    if (!document.hidden && !suspended && isLive(view) && !view.expired) {
       stopPolling();
       poll();
     }
   });
   window.addEventListener("online", () => {
     const notice = $("notice");
-    if (!notice.classList.contains("hidden") && notice.dataset.kind === "offline") start();
+    if (!suspended && !notice.classList.contains("hidden") && notice.dataset.kind === "offline") start();
   });
 
-  start();
+  if (autostart) start();
+  else suspended = true;
 }

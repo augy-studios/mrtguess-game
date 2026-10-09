@@ -6,7 +6,8 @@
 //
 // What happens to each request:
 //
-//   navigation              the shell this worker owns, network if absent
+//   navigation              the shell this worker owns, network if absent;
+//                           /join and /r/<id> are the game page too
 //   /api/                   not intercepted: rounds need the network
 //   same origin assets      cache first
 //   Google Fonts            cache first, in a cache that outlives versions
@@ -31,7 +32,7 @@
 // 4. Nothing under /api/ is ever cached. A cached round or leaderboard is a
 //    wrong answer, not a stale one.
 
-const VERSION = "mrtguessr-v7";
+const VERSION = "mrtguessr-v8";
 
 const SHELL = `mrtguessr-shell-${VERSION}`;
 
@@ -64,6 +65,15 @@ const PRECACHE = [
   "/js/icons.js",
   "/js/ui.js",
   "/js/update-bar.js",
+  "/js/rules.js",
+  "/js/round-view.js",
+  "/js/stations.js",
+  "/js/p2p.js",
+  "/js/qr.js",
+  "/js/party.js",
+  "/js/party-host.js",
+  "/js/replay.js",
+  "/js/replay-format.js",
 
   "/vendor/leaflet/leaflet.js",
   "/vendor/leaflet/leaflet.css",
@@ -180,7 +190,11 @@ self.addEventListener("fetch", (event) => {
 async function navigation(request, url) {
   const shell = await caches.open(SHELL);
 
-  const own = await shell.match(url.pathname);
+  // A join link and a short replay link open the game page, which reads its
+  // own address. PeerJS itself is left to the network (STUN-p2p-spec.md):
+  // it is cross origin, so this worker never sees it.
+  const page = url.pathname === "/join" || /^\/r\/[A-Za-z0-9]{8}\/?$/.test(url.pathname) ? "/" : url.pathname;
+  const own = await shell.match(page);
   if (own) return own;
 
   try {

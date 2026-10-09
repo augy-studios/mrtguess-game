@@ -13,7 +13,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-# Same colours as main-site/api/_lib/lines.js. The page tokens for light mode.
+# Same colours as main-site/js/rules.js. The page tokens for light mode.
 LINE_COLOURS = {
     "NS": "#d42e12", "EW": "#009645", "NE": "#9900aa", "CC": "#fa9e0d", "DT": "#005ec4",
     "TE": "#9d5b25", "BP": "#748477", "SK": "#748477", "PG": "#748477",

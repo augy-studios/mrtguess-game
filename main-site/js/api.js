@@ -61,7 +61,8 @@ const round = (path, roundId, extra = {}) =>
   call("POST", `/api/round/${path}`, { round_id: roundId, client_key: clientKey(), ...extra });
 
 export const api = {
-  newRound: () => call("POST", "/api/round/new", { client_key: clientKey() }),
+  newRound: ({ difficulty, turn_seconds } = {}) =>
+    call("POST", "/api/round/new", { client_key: clientKey(), difficulty, turn_seconds }),
   state: (roundId) => round("state", roundId),
   hint: (roundId) => round("hint", roundId),
   giveUp: (roundId) => round("giveup", roundId),
@@ -69,4 +70,8 @@ export const api = {
   checkName: (name) => call("POST", "/api/leaderboard/name", { name }),
   submit: (roundId, name) => call("POST", "/api/leaderboard/submit", { round_id: roundId, name }),
   leaderboard: (board) => call("GET", `/api/leaderboard?board=${encodeURIComponent(board)}`),
+  soloReplay: (roundId, name) =>
+    call("POST", "/api/replay/create", { round_id: roundId, client_key: clientKey(), name: name ?? undefined }),
+  partyReplay: (replay) => call("POST", "/api/replay/create", { replay }),
+  replay: (id) => call("GET", `/api/replay?id=${encodeURIComponent(id)}`),
 };

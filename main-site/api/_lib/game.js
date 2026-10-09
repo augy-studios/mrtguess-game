@@ -1,30 +1,38 @@
-// The game rules. Every client calls through here; nothing below is
-// duplicated in a client.
+// Solo rounds. The rules themselves are in js/rules.js, shared with the party
+// host and the replay viewer; this file stores a round, records what the
+// player does as events, and works out from them what the player may see.
 //
-// Hint ladder, all derived from the station row:
-//   1  line colour          given with the round, free
-//   2  station codes        -100, in full: NS19, or NS24 NE6 CC1
-//   3  position on a map    -150
-//   4  Chinese name         -200
-//   5  one more letter      -60 each, until half the letters show
-//
-// Letters also reveal on their own, one every 15 seconds, at the same -60
-// each and up to the same limit. The clock is the server's: a reveal is due
-// from created_at, whoever asks and whenever.
+// A round row keeps its events and its letter order, and every other column
+// that matters (score, solved, finished_at) is written from them by settle(),
+// so the leaderboard's SQL reads the same numbers the rules give. The clock
+// needs no writes: the letters showing are worked out from the time whenever
+// the round is read.
 
 import { randomInt } from "node:crypto";
 import { rest } from "./supabase.js";
 import { HttpError } from "./http.js";
-import { colorsFor, lineNamesFor } from "./lines.js";
+import {
+  START_SCORE,
+  MAX_EVENTS,
+  cleanDifficulty,
+  cleanTurn,
+  colorsFor,
+  hintsFor,
+  letterPositions,
+  maskOf,
+  multipliers,
+  nextHint,
+  nextRevealIn,
+  shuffle,
+  turnMs,
+  turnState,
+} from "../../js/rules.js";
 
-export const START_SCORE = 1000;
-export const REVEAL_EVERY_MS = 15_000;
-export const LETTER_COST = 60;
-export const WRONG_GUESS_COST = 20;
-export const MIN_SCORE = 50;
-export const ROUND_TTL_MS = 60 * 60 * 1000;
-export const TIER_COST = { 2: 100, 3: 150, 4: 200, 5: LETTER_COST };
-export const LAST_TIER = 5;
+export { START_SCORE };
+
+// A guess sent in the last moment of a timed round still counts, as made at
+// the moment time ran out.
+const GRACE_MS = 2000;
 
 const STATIONS_TTL_MS = 60 * 60 * 1000;
 let stationsCache = null;
@@ -32,7 +40,7 @@ let stationsCache = null;
 // 184 rows, read once per warm instance.
 export async function stations() {
   if (stationsCache && Date.now() - stationsCache.at < STATIONS_TTL_MS) return stationsCache.rows;
-  const rows = await rest("mrtguessr_stations?select=id,name_en,name_zh,codes,lines,lat,lon");
+  const rows = await rest("mrtguessr_stations?select=id,name_en,name_zh,name_ta,codes,lines,lat,lon");
   if (!rows?.length) throw new HttpError(503, "no_stations", "Station data is not loaded yet.");
   stationsCache = { at: Date.now(), rows, byId: new Map(rows.map((s) => [s.id, s])) };
   return rows;
@@ -57,145 +65,186 @@ export async function pickStation(clientKey) {
   return from[randomInt(from.length)];
 }
 
-const isLetter = (ch) => /\p{L}/u.test(ch);
-
-export function letterPositions(name) {
-  return [...name].flatMap((ch, i) => (isLetter(ch) ? [i] : []));
+// A new round's row. Difficulty and time limit come from the request; a bot
+// sends neither and gets normal with no limit, the game as it always was.
+export function newRoundRow(station, clientKey, body) {
+  return {
+    station_id: station.id,
+    client_key: clientKey,
+    hint_tier: 1,
+    score: START_SCORE,
+    difficulty: cleanDifficulty(body.difficulty),
+    turn_seconds: cleanTurn(body.turn_seconds),
+    reveal_order: shuffle(letterPositions(station.name_en), randomInt),
+    events: [],
+  };
 }
 
-export function maxReveals(name) {
-  return Math.floor(letterPositions(name).length / 2);
-}
-
-// "_" for a hidden letter. Spaces and hyphens show, as word shapes do in
-// Skribbl.
-export function maskOf(name, revealed, full = false) {
-  const shown = new Set(revealed);
-  return [...name].map((ch, i) => (!isLetter(ch) || full || shown.has(i) ? ch : "_")).join("");
-}
-
-// Case, spacing, hyphens and accents ignored: "toapayoh" is "Toa Payoh".
-export function normaliseGuess(text) {
-  return String(text)
-    .normalize("NFKD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]/gu, "");
-}
-
+const settingsOf = (round) => ({ difficulty: cleanDifficulty(round.difficulty), turn: cleanTurn(round.turn_seconds) });
+const elapsedOf = (round, now) => now - Date.parse(round.created_at);
 const finished = (round) => round.solved || round.gave_up;
-const expired = (round, now) => now - Date.parse(round.created_at) > ROUND_TTL_MS;
 
-function revealRandom(round, name, count) {
-  const shown = new Set(round.revealed_positions);
-  const hidden = letterPositions(name).filter((i) => !shown.has(i));
-  const added = [];
-  for (let n = 0; n < count && hidden.length; n++) {
-    added.push(hidden.splice(randomInt(hidden.length), 1)[0]);
+// Rounds started before migration 006 have no letter order and no events,
+// so the rules cannot work them out. They read as expired: give up to see the
+// answer, then start another.
+const legacy = (round) => !Array.isArray(round.reveal_order);
+
+function stateOf(round, station, now) {
+  const settings = settingsOf(round);
+  const limit = turnMs(settings.turn);
+  return { settings, limit, s: turnState(station.name_en, settings, round.events, limit, elapsedOf(round, now)) };
+}
+
+// Writes what the events add up to into the columns SQL and the bots read.
+function settle(round, station, now) {
+  const { s } = stateOf(round, station, now);
+  round.hint_tier = s.tier;
+  round.letters_bought = s.bought;
+  round.revealed_positions = round.reveal_order.slice(0, s.revealed);
+  round.solved = s.done?.by === "solved";
+  round.gave_up = s.done?.by === "gave_up";
+  // A solved round's score is its points, multipliers and all: that is what
+  // mrtguessr_submit puts on the board.
+  round.score = round.solved ? s.points : round.gave_up ? 0 : s.base;
+  if (s.done && !round.finished_at) {
+    round.finished_at = new Date(Date.parse(round.created_at) + s.done.t).toISOString();
   }
-  round.revealed_positions = [...round.revealed_positions, ...added].sort((a, b) => a - b);
-  round.score = Math.max(MIN_SCORE, round.score - added.length * LETTER_COST);
-  return added.length;
 }
 
-// Applies every clock reveal that has come due. Returns whether it changed
-// anything, so a read with nothing due costs no write.
-export function applyClock(round, station, now = Date.now()) {
-  if (finished(round) || expired(round, now)) return false;
-  const room = maxReveals(station.name_en) - round.revealed_positions.length;
-  const due = Math.floor((now - Date.parse(round.created_at)) / REVEAL_EVERY_MS);
-  const clockDone = round.revealed_positions.length - round.letters_bought;
-  const count = Math.min(due - clockDone, room);
-  return count > 0 && revealRandom(round, station.name_en, count) > 0;
+function record(round, station, now, event) {
+  const { limit } = stateOf(round, station, now);
+  // Held to the time limit, so a guess in the grace period counts as made
+  // when time ran out.
+  const t = Math.max(0, Math.min(elapsedOf(round, now), limit));
+  round.events = [...(round.events ?? []), [t, ...event]];
+  settle(round, station, now);
 }
 
-function nextHint(round, station) {
-  if (finished(round)) return null;
-  const tier = round.hint_tier + 1;
-  if (tier < LAST_TIER) return { tier, penalty: TIER_COST[tier] };
-  if (round.revealed_positions.length < maxReveals(station.name_en)) return { tier: LAST_TIER, penalty: LETTER_COST };
-  return null;
+function roomForEvents(round) {
+  if ((round.events?.length ?? 0) >= MAX_EVENTS) {
+    throw new HttpError(409, "too_many", "That is enough for one round. Give up to see the answer.");
+  }
 }
 
 // Buys the next rung. Throws when there is nothing left to buy.
-export function applyHint(round, station) {
-  const next = nextHint(round, station);
+export function applyHint(round, station, now = Date.now()) {
+  roomForEvents(round);
+  const { s } = stateOf(round, station, now);
+  const next = nextHint(s.tier, s.revealed, station.name_en, round.difficulty);
   if (!next) throw new HttpError(409, "no_more_hints", "There are no more hints for this station.");
-  if (next.tier < LAST_TIER) {
-    round.hint_tier = next.tier;
-    round.score = Math.max(MIN_SCORE, round.score - next.penalty);
-  } else {
-    round.hint_tier = LAST_TIER;
-    revealRandom(round, station.name_en, 1);
-    round.letters_bought += 1;
-  }
+  record(round, station, now, ["h", next.tier]);
   return next.penalty;
 }
 
-export function applyGuess(round, station, guess) {
-  const correct = normaliseGuess(guess) === normaliseGuess(station.name_en);
-  if (correct) {
-    round.solved = true;
-    round.finished_at = new Date().toISOString();
-  } else {
-    round.score = Math.max(MIN_SCORE, round.score - WRONG_GUESS_COST);
-  }
-  return correct;
+export function applyGuess(round, station, guess, now = Date.now()) {
+  roomForEvents(round);
+  record(round, station, now, ["g", guess]);
+  return round.solved;
 }
 
-export function applyGiveUp(round) {
-  round.gave_up = true;
-  round.score = 0;
-  round.finished_at = new Date().toISOString();
+export function applyGiveUp(round, station, now = Date.now()) {
+  if (legacy(round)) {
+    round.gave_up = true;
+    round.score = 0;
+    round.finished_at = new Date(now).toISOString();
+    return;
+  }
+  record(round, station, now, ["x"]);
 }
 
 export function assertPlayable(round, now = Date.now()) {
   if (finished(round)) throw new HttpError(409, "round_over", "This round is already over.");
-  if (expired(round, now)) throw new HttpError(410, "round_expired", "This round has expired. Start a new one.");
+  const limit = legacy(round) ? 0 : turnMs(settingsOf(round).turn);
+  if (elapsedOf(round, now) > limit + GRACE_MS) {
+    throw new HttpError(410, "round_expired", "This round has run out of time. Start a new one.");
+  }
+}
+
+function answerOf(station) {
+  return { name_en: station.name_en, name_zh: station.name_zh, name_ta: station.name_ta, codes: station.codes };
 }
 
 // What a client may see. The station's name only appears once the round is
 // over, and each hint only once its tier is bought.
 export function view(round, station, now = Date.now()) {
-  const tier = round.hint_tier;
+  const name = station.name_en;
   const over = finished(round);
-  const hints = { colors: colorsFor(station.lines) };
-  if (tier >= 2) {
-    hints.codes = station.codes;
-    hints.line_names = lineNamesFor(station.lines);
-  }
-  // Rounded to about 100 m: enough for a dot on a map.
-  if (tier >= 3) hints.position = { lat: +station.lat.toFixed(3), lon: +station.lon.toFixed(3) };
-  if (tier >= 4 && station.name_zh) hints.name_zh = station.name_zh;
-
-  let nextRevealIn = null;
-  if (!over && !expired(round, now) && round.revealed_positions.length < maxReveals(station.name_en)) {
-    const clockDone = round.revealed_positions.length - round.letters_bought;
-    nextRevealIn = Math.max(0, Date.parse(round.created_at) + (clockDone + 1) * REVEAL_EVERY_MS - now);
-  }
-
-  const out = {
+  const base = {
     round_id: round.id,
-    mask: maskOf(station.name_en, round.revealed_positions, over),
-    length: letterPositions(station.name_en).length,
-    hint_tier: tier,
-    line_color: hints.colors[0]?.hex ?? null,
-    hints,
-    score: round.score,
+    length: letterPositions(name).length,
+    line_color: colorsFor(station.lines)[0]?.hex ?? null,
     solved: round.solved,
     gave_up: round.gave_up,
-    expired: !over && expired(round, now),
-    next_reveal_in: nextRevealIn,
-    next_hint: nextHint(round, station),
     created_at: round.created_at,
   };
-  if (over) {
-    out.answer = { name_en: station.name_en, name_zh: station.name_zh, name_ta: station.name_ta, codes: station.codes };
+
+  if (legacy(round)) {
+    return {
+      ...base,
+      mask: maskOf(name, round.revealed_positions, over),
+      hint_tier: round.hint_tier,
+      hints: hintsFor(station, round.hint_tier),
+      score: round.score,
+      expired: !over,
+      next_reveal_in: null,
+      next_hint: null,
+      difficulty: "normal",
+      turn_seconds: null,
+      time_left: null,
+      ...(over ? { answer: answerOf(station) } : {}),
+    };
   }
+
+  const { settings, limit, s } = stateOf(round, station, now);
+  const elapsed = elapsedOf(round, now);
+  const expired = !over && elapsed > limit;
+  const live = !over && !expired;
+
+  const out = {
+    ...base,
+    mask: maskOf(name, round.reveal_order.slice(0, s.revealed), over),
+    hint_tier: s.tier,
+    hints: hintsFor(station, s.tier),
+    score: over ? s.points : s.base,
+    expired,
+    next_reveal_in: live ? nextRevealIn(name, settings.difficulty, elapsed, s.bought, limit) : null,
+    next_hint: over ? null : nextHint(s.tier, s.revealed, name, settings.difficulty),
+    difficulty: settings.difficulty,
+    turn_seconds: settings.turn,
+    time_left: settings.turn && !over ? Math.max(0, limit - elapsed) : null,
+  };
+  if (s.done?.by === "solved") {
+    out.scoring = { base: s.base, ...multipliers(settings, s.done.t), points: s.points, time_ms: s.done.t };
+  }
+  if (over) out.answer = answerOf(station);
   return out;
 }
 
-const WRITABLE = ["hint_tier", "revealed_positions", "score", "solved", "gave_up", "finished_at", "letters_bought"];
+// The round as a replay: the same format a party game uses, with one player
+// and one turn. Built from the stored events, so its points are the server's.
+export function soloReplay(round, station, name) {
+  const settings = settingsOf(round);
+  const { s, limit } = stateOf(round, station, Date.now());
+  return {
+    v: 1,
+    kind: "solo",
+    at: round.created_at,
+    settings,
+    players: [name],
+    turns: [
+      {
+        station: station.name_en,
+        order: round.reveal_order,
+        end: s.done ? s.done.t : limit,
+        events: [round.events ?? []],
+      },
+    ],
+  };
+}
+
+export const replayable = (round) => finished(round) && !legacy(round);
+
+const WRITABLE = ["hint_tier", "revealed_positions", "score", "solved", "gave_up", "finished_at", "letters_bought", "events"];
 
 export async function loadRound(id, clientKey) {
   const rows = await rest(`mrtguessr_rounds?id=eq.${id}&select=*`);

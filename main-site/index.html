@@ -76,6 +76,9 @@
                 <h1 class="brand-name">MRT Station Guesser</h1>
             </div>
             <div class="topbar-actions">
+                <button id="partyBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Play with friends">
+                    <span data-icon="users"></span>
+                </button>
                 <button id="boardBtn" class="icon-btn" type="button" aria-haspopup="dialog" aria-label="Leaderboard">
                     <span data-icon="trophy"></span>
                 </button>
@@ -92,7 +95,7 @@
             </div>
         </header>
 
-        <main class="card glass game" aria-labelledby="gameTitle">
+        <main id="solo" class="card glass game" aria-labelledby="gameTitle">
             <h2 id="gameTitle" class="visually-hidden">Guess the station</h2>
 
             <!-- Shown first, while a station is picked, and for anything that
@@ -108,8 +111,11 @@
             <section id="play" class="panel play hidden">
                 <p class="round-meta">
                     <span id="letterCount"></span>
+                    <span id="roundMode"></span>
+                    <span id="timeLeft" class="time-left hidden"></span>
                     <span class="score"><span id="score"></span> points</span>
                 </p>
+                <div id="timeBar" class="time-bar hidden" aria-hidden="true"><span></span></div>
                 <div id="mask" class="mask" role="img"></div>
                 <div id="revealBar" class="reveal-bar" aria-hidden="true"><span class="reveal-fill"></span></div>
                 <p id="revealNote" class="reveal-note"></p>
@@ -145,6 +151,7 @@
                 <p id="resultAlt" class="result-alt"></p>
                 <p id="resultCodes" class="result-codes"></p>
                 <p id="resultScore" class="result-score"></p>
+                <p id="resultBreakdown" class="result-breakdown hidden"></p>
 
                 <form id="submitForm" class="submit" autocomplete="off">
                     <label for="nameInput" class="submit-label">Add this round to the leaderboard</label>
@@ -165,11 +172,224 @@
                     <button id="playAgainBtn" class="btn btn-primary pill" type="button">
                         <span data-icon="refresh"></span>Play again
                     </button>
+                    <button id="shareReplayBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="share"></span>Share replay
+                    </button>
                     <button id="resultBoardBtn" class="btn btn-quiet pill" type="button">
                         <span data-icon="trophy"></span>Leaderboard
                     </button>
                 </div>
+                <p id="shareMsg" class="share-msg" role="status" aria-live="polite"></p>
             </section>
+        </main>
+
+        <!-- Party games: one device hosts, up to seven more join. js/party.js -->
+        <main id="party" class="card glass game party" aria-labelledby="partyTitle" hidden>
+            <h2 id="partyTitle" class="visually-hidden">Play with friends</h2>
+
+            <div id="partyBar" class="party-bar hidden">
+                <span id="partyDot" class="status-dot"></span>
+                <span id="partyBarText" class="party-bar-text" role="status" aria-live="polite"></span>
+                <button id="partyBarBtn" class="btn btn-quiet pill" type="button"><span id="partyBarLabel">Leave</span></button>
+            </div>
+
+            <section id="partyStart" class="panel">
+                <span class="card-icon" data-icon="users"></span>
+                <h3 class="panel-title">Play with friends</h3>
+                <p>Up to 8 players, each on their own phone, all on the same wifi. One device hosts and shows a code; everybody else joins with it.</p>
+                <div class="name-row">
+                    <label for="partyName" class="block-label">Your name</label>
+                    <input id="partyName" class="field" type="text" placeholder="Name" maxlength="20"
+                        autocomplete="nickname" spellcheck="false" enterkeyhint="done">
+                </div>
+                <button id="hostBtn" class="btn btn-primary pill" type="button"><span data-icon="users"></span>Host a game</button>
+                <p class="party-or">or join one</p>
+                <form id="joinForm" class="guess" autocomplete="off">
+                    <label for="joinCode" class="visually-hidden">Game code</label>
+                    <input id="joinCode" class="field code-field" type="text" placeholder="Code" maxlength="8"
+                        autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go">
+                    <button class="btn btn-primary" type="submit"><span data-icon="send"></span>Join</button>
+                </form>
+                <p id="partyStartMsg" class="feedback error" role="status" aria-live="polite"></p>
+                <p class="party-note">Devices connect straight to each other, so they have to be on the same network: the same wifi, or a hotspot from one phone that the others join. Some hotel, school and office wifi blocks this; a hotspot gets round it. PeerJS's free server introduces the devices and sees their IP addresses, never the game.</p>
+                <button id="partyBackBtn" class="btn btn-quiet pill" type="button">Back to playing alone</button>
+            </section>
+
+            <section id="partyNotice" class="panel notice hidden">
+                <span class="card-icon" id="partyNoticeIcon" data-icon="users"></span>
+                <p id="partyNoticeText" role="status" aria-live="polite"></p>
+                <div class="round-actions">
+                    <button id="partyRetryBtn" class="btn btn-primary pill hidden" type="button"><span data-icon="refresh"></span>Reconnect</button>
+                    <button id="partyNoticeBack" class="btn btn-quiet pill" type="button">Back</button>
+                </div>
+            </section>
+
+            <section id="partyLobby" class="panel hidden">
+                <div id="hostInvite" class="invite hidden">
+                    <p class="block-label">Join with this code</p>
+                    <button id="partyCode" class="party-code" type="button" aria-label="Copy the code">------</button>
+                    <div id="qrHolder" class="qr"></div>
+                    <p id="partyLink" class="party-link"></p>
+                    <div class="round-actions">
+                        <button id="copyLinkBtn" class="btn btn-quiet pill" type="button"><span data-icon="copy"></span>Share link</button>
+                        <button id="newCodeBtn" class="btn btn-quiet pill" type="button"><span data-icon="refresh"></span>New code</button>
+                    </div>
+                    <p id="lobbyStatus" class="reveal-note" role="status" aria-live="polite"></p>
+                </div>
+
+                <div id="hostSettings" class="lobby-block hidden">
+                    <p class="block-label">Stations per game</p>
+                    <div id="lengthPicker" class="mode-toggle quarters">
+                        <button class="mode-btn" type="button" data-length="5" aria-pressed="false">5</button>
+                        <button class="mode-btn" type="button" data-length="10" aria-pressed="false">10</button>
+                        <button class="mode-btn" type="button" data-length="20" aria-pressed="false">20</button>
+                        <button class="mode-btn" type="button" data-length="custom" aria-pressed="false">Custom</button>
+                    </div>
+                    <div id="customLength" class="custom-length hidden">
+                        <label for="customLengthInput">Stations, 1 to <span id="lengthMax">184</span></label>
+                        <input id="customLengthInput" class="field" type="number" inputmode="numeric" min="1" max="184" step="1">
+                    </div>
+                    <p class="block-label">Difficulty</p>
+                    <div id="partyDifficulty" class="mode-toggle thirds"></div>
+                    <p class="block-label">Time per station</p>
+                    <div id="partyTurn" class="mode-toggle thirds"></div>
+                </div>
+                <div id="guestSettings" class="lobby-block hidden">
+                    <p class="block-label">This game</p>
+                    <p id="guestSettingsText" class="settings-text"></p>
+                </div>
+                <p id="scoringNote" class="mode-note scoring-note"></p>
+
+                <div class="lobby-block">
+                    <p class="block-label" id="playersLabel">Players</p>
+                    <ul id="lobbyPlayers" class="player-list"></ul>
+                </div>
+
+                <button id="startBtn" class="btn btn-primary pill" type="button" disabled><span data-icon="train"></span>Start game</button>
+                <p id="startNote" class="reveal-note"></p>
+            </section>
+
+            <section id="partyReady" class="panel hidden">
+                <p id="readyTitle" class="ready-title"></p>
+                <p id="readyCount" class="ready-count" aria-live="polite"></p>
+                <p id="readyNote" class="reveal-note"></p>
+            </section>
+
+            <section id="partyPlay" class="panel play hidden">
+                <p class="round-meta">
+                    <span id="pStation"></span>
+                    <span id="pClock" class="time-left"></span>
+                    <span class="score"><span id="pScore"></span> points</span>
+                </p>
+                <div id="pTimeBar" class="time-bar" aria-hidden="true"><span></span></div>
+                <div id="pMask" class="mask" role="img"></div>
+                <div id="pRevealBar" class="reveal-bar meter" aria-hidden="true"><span class="reveal-fill"></span></div>
+                <p id="pRevealNote" class="reveal-note"></p>
+
+                <form id="pGuessForm" class="guess" autocomplete="off">
+                    <label for="pGuessInput" class="visually-hidden">Your guess</label>
+                    <input id="pGuessInput" class="field" type="text" placeholder="Station name"
+                        maxlength="64" autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="send">
+                    <button class="btn btn-primary" type="submit"><span data-icon="send"></span>Guess</button>
+                </form>
+                <p id="pFeedback" class="feedback" role="status" aria-live="polite"></p>
+
+                <dl id="pHints" class="hints"></dl>
+                <div id="pMapHint" class="map-hint hidden">
+                    <div id="pMap" class="map" role="img" aria-label="Rail map with the station ringed"></div>
+                </div>
+                <dl id="pLaterHints" class="hints"></dl>
+
+                <div id="pActions" class="round-actions">
+                    <button id="pHintBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="bulb"></span><span id="pHintLabel">Hint</span>
+                    </button>
+                    <button id="pGiveUpBtn" class="btn btn-quiet pill" type="button">
+                        <span data-icon="flag"></span><span id="pGiveUpLabel">Give up</span>
+                    </button>
+                </div>
+
+                <ul id="pPlayers" class="player-list compact" aria-label="Players"></ul>
+            </section>
+
+            <section id="partyResult" class="panel result hidden">
+                <h3 id="prTitle" class="result-title" tabindex="-1"></h3>
+                <p id="prAlt" class="result-alt"></p>
+                <p id="prCodes" class="result-codes"></p>
+                <p id="prMine" class="result-score"></p>
+                <table id="prTable" class="board-table standings"></table>
+                <p id="prNext" class="reveal-note"></p>
+                <button id="nextBtn" class="btn btn-primary pill hidden" type="button"><span data-icon="send"></span><span id="nextLabel">Next station</span></button>
+            </section>
+
+            <section id="partyFinal" class="panel result hidden">
+                <span class="card-icon" data-icon="trophy"></span>
+                <h3 id="pfTitle" class="result-title" tabindex="-1"></h3>
+                <table id="pfTable" class="board-table standings"></table>
+                <p id="pfNote" class="reveal-note"></p>
+                <div class="round-actions">
+                    <button id="againBtn" class="btn btn-primary pill hidden" type="button"><span data-icon="refresh"></span>Play again</button>
+                    <button id="pfWatchBtn" class="btn btn-quiet pill" type="button"><span data-icon="play"></span>Watch replay</button>
+                    <button id="pfShareBtn" class="btn btn-quiet pill" type="button"><span data-icon="share"></span>Share replay</button>
+                </div>
+                <p id="pfWait" class="reveal-note hidden">Waiting for the host to start another game.</p>
+                <p id="pfShareMsg" class="share-msg" role="status" aria-live="polite"></p>
+            </section>
+        </main>
+
+        <!-- A replay, from a /r/ link or a party game just played. js/replay.js -->
+        <main id="replay" class="card glass game replay" aria-labelledby="rvTitle" hidden>
+            <div class="replay-head">
+                <h2 id="rvTitle">Replay</h2>
+                <p id="rvMeta" class="replay-meta"></p>
+                <p id="rvTrust" class="replay-trust"></p>
+            </div>
+
+            <section id="rvLoading" class="panel notice">
+                <span class="card-icon" data-icon="play"></span>
+                <p id="rvLoadingText" role="status" aria-live="polite">Loading the replay.</p>
+                <button id="rvLoadingBack" class="btn btn-quiet pill" type="button">Close</button>
+            </section>
+
+            <section id="rvBody" class="panel hidden">
+                <div class="turn-nav">
+                    <button id="rvPrev" class="icon-btn small" type="button" aria-label="Previous station"><span data-icon="chevronLeft"></span></button>
+                    <span id="rvTurn"></span>
+                    <button id="rvNext" class="icon-btn small" type="button" aria-label="Next station"><span data-icon="chevronRight"></span></button>
+                </div>
+                <div id="rvMask" class="mask" role="img"></div>
+                <div id="rvAnswer" class="replay-answer hidden">
+                    <h3 id="rvAnswerName" class="result-title"></h3>
+                    <p id="rvAlt" class="result-alt"></p>
+                    <p id="rvCodes" class="result-codes"></p>
+                </div>
+                <div class="replay-controls">
+                    <button id="rvPlay" class="icon-btn" type="button" aria-label="Play"><span data-icon="play"></span></button>
+                    <label for="rvScrub" class="visually-hidden">Time in this station</label>
+                    <input id="rvScrub" class="scrub" type="range" min="0" max="1000" step="100" value="0">
+                    <span id="rvTime" class="time-left"></span>
+                </div>
+                <div id="rvSpeed" class="mode-toggle quarters" aria-label="Speed">
+                    <button class="mode-btn" type="button" data-speed="1" aria-pressed="true">1x</button>
+                    <button class="mode-btn" type="button" data-speed="2" aria-pressed="false">2x</button>
+                    <button class="mode-btn" type="button" data-speed="4" aria-pressed="false">4x</button>
+                    <button class="mode-btn" type="button" data-speed="8" aria-pressed="false">8x</button>
+                </div>
+                <dl id="rvHints" class="hints"></dl>
+                <ul id="rvPlayers" class="player-list picks" aria-label="Players: pick one to follow"></ul>
+                <ol id="rvLog" class="replay-log" aria-label="What happened"></ol>
+                <div class="lobby-block">
+                    <p id="rvStandingsTitle" class="block-label"></p>
+                    <table id="rvTable" class="board-table standings"></table>
+                    <p id="rvGameNote" class="reveal-note"></p>
+                </div>
+            </section>
+
+            <div class="round-actions">
+                <button id="rvShare" class="btn btn-quiet pill" type="button"><span data-icon="share"></span>Share</button>
+                <button id="rvClose" class="btn btn-primary pill" type="button"><span data-icon="close"></span>Close replay</button>
+            </div>
+            <p id="rvShareMsg" class="share-msg" role="status" aria-live="polite"></p>
         </main>
 
         <footer class="foot">
@@ -216,6 +436,25 @@
             </form>
             <p id="nameMsg" class="mode-note" role="status" aria-live="polite"></p>
             <button id="clearNameBtn" class="btn btn-quiet pill clear-name" type="button">Clear name</button>
+
+            <p class="modal-section-label">Difficulty</p>
+            <div class="mode-toggle thirds" id="difficultyToggle">
+                <button class="mode-btn" type="button" data-difficulty="easy" aria-pressed="false">Easy</button>
+                <button class="mode-btn" type="button" data-difficulty="normal" aria-pressed="false">Normal</button>
+                <button class="mode-btn" type="button" data-difficulty="hard" aria-pressed="false">Hard</button>
+            </div>
+            <p class="modal-section-label">Time limit</p>
+            <div class="mode-toggle quarters" id="turnToggle">
+                <button class="mode-btn" type="button" data-turn="none" aria-pressed="false">None</button>
+                <button class="mode-btn" type="button" data-turn="120" aria-pressed="false">2 min</button>
+                <button class="mode-btn" type="button" data-turn="60" aria-pressed="false">1 min</button>
+                <button class="mode-btn" type="button" data-turn="30" aria-pressed="false">30 s</button>
+            </div>
+            <p class="mode-note">
+                From the next round. Hard shows fewer letters, more slowly, and scores &times; 1.5; easy scores
+                &times; 0.75. A time limit scores &times; 1.2 at one minute and &times; 1.5 at 30 seconds, plus up
+                to half again for time left when you solve it. Run out of time and the round ends with no points.
+            </p>
 
             <p class="modal-section-label">Rounds</p>
             <button class="setting-toggle" type="button" role="switch" aria-checked="false" data-setting="auto_submit">

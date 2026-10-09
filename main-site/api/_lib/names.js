@@ -33,7 +33,7 @@ const WHOLE_WORD = new Set([
 const LEET = { 0: "o", 1: "i", 3: "e", 4: "a", 5: "s", 7: "t", 8: "b", 9: "g" };
 const unleet = (s) => s.replace(/[0-9]/g, (d) => LEET[d] ?? d);
 
-function profane(name) {
+export function profane(name) {
   const lower = name.toLowerCase();
   const squashed = unleet(lower.replace(/[\s_-]+/g, ""));
   if (ANYWHERE.some((w) => squashed.includes(w))) return true;

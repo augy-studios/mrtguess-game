@@ -1,10 +1,11 @@
-// POST /api/round/new  { client_key }
+// POST /api/round/new  { client_key, difficulty?, turn_seconds? }
 // Starts a round. The answer stays in mrtguessr_rounds; the reply carries
-// only the mask and the free first hint.
+// only the mask and the free first hint. difficulty is easy, normal or hard,
+// turn_seconds 30, 60 or 120; leave either out for normal with no limit.
 
 import { randomInt } from "node:crypto";
 import { clientKey, endpoint } from "../_lib/http.js";
-import { pickStation, START_SCORE, view } from "../_lib/game.js";
+import { newRoundRow, pickStation, view } from "../_lib/game.js";
 import { rest, rpc } from "../_lib/supabase.js";
 
 export default endpoint("POST", async ({ bot, body }) => {
@@ -13,7 +14,7 @@ export default endpoint("POST", async ({ bot, body }) => {
 
   const [round] = await rest("mrtguessr_rounds", {
     method: "POST",
-    body: { station_id: station.id, client_key: key, hint_tier: 1, score: START_SCORE },
+    body: newRoundRow(station, key, body),
     prefer: "return=representation",
   });
 

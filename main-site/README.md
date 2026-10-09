@@ -34,12 +34,52 @@ this browser's local storage and separate from the bot's:
 | Add solved rounds automatically | off | Submits every solve under the saved name. Needs a name; clearing it turns this off. |
 | Ask before buying a hint | off | The hint button takes a second tap, naming the cost. |
 | Map hint colours | match page | Light or dark map whatever the page's mode. |
+| Difficulty | normal | Easy, normal or hard, from the next round. Scales the points; see `api/README.md`. |
+| Time limit | none | None, 2 minutes, 1 minute or 30 seconds. A limit scales the points and adds a speed bonus; running out ends the round with no points. |
 
 The bot's "remove old round cards" is left out: there are no old cards here.
+The bots always play normal with no time limit.
+
+**Party games:** the people button in the header. One device hosts and shows
+a code, a QR code and a link (`/join?id=CODE`); up to seven more join with
+any of them, for eight players including the host. Before the game the host
+picks the stations per game (5, 10, 20, or any number up to all 184), the
+difficulty and the time per station (30 seconds, 1 or 2 minutes), and the
+guests see the choices as they change. Every player gets the same station at
+the same time, with the same letters showing in the same order, and buys
+their own hints. A station ends when everybody still connected has solved it
+or given up, or at the time limit. Points per station use the same
+multipliers as solo; the game score at the end is the total times a length
+multiplier (× 1 for 5 stations, × 1.25 for 10, × 1.5 for 20, a quarter more
+per doubling, a little under 1 below 5).
+
+The host's device runs the game (`js/party-host.js`) with the rules in
+`js/rules.js`, and the devices talk directly over WebRTC, set up through
+PeerJS's public broker with STUN only, as `STUN-p2p-spec.md` at the repo root
+describes. So they have to be on the same network, or one on a hotspot from
+the other; guest wifi that isolates clients will not work. The host has the
+answers in memory, so party scores never go on the leaderboard. A guest that
+reloads or drops rejoins its seat by itself; a host that reloads carries on
+with the same game and code, from session storage.
+
+**Replays:** Share replay on a solo result, and Share replay or Watch replay
+at the end of a party game. Online the link is short, `/r/<id>`, stored by
+`/api/replay/create`; a party game that cannot reach the API gets a long link
+with the whole game in it (`/?replay=...`, deflated JSON), the way chess-game
+shares replays. A replay plays each station back with every player's letters,
+hints and guesses, at 1x to 8x, and works every score out again from the
+events. Solo replays are checked by the server; party ones say they are not.
 
 **Offline:** the page, its scripts, the station and line data, Leaflet and the
 Jua font are precached, so the site loads with no connection. Rounds need the
-network: nothing under `/api/` is ever cached.
+network: nothing under `/api/` is ever cached. A party game needs it only to
+pair, and PeerJS is loaded from cdnjs when somebody hosts or joins, never
+cached by the service worker. `/join` and `/r/<id>` are rewrites to the game
+page, in `vercel.json` and in the worker.
+
+**Privacy:** in a party game each device learns the others' public IP
+addresses, as any peer-to-peer connection does, and PeerJS's broker sees peer
+ids and IP addresses, never the game. The privacy policy should say so.
 
 **Updates:** a new service worker installs and waits. The update bar at the
 top of the page offers Reload or Not now, and nothing reloads until the reader
