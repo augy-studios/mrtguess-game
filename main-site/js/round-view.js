@@ -65,7 +65,10 @@ export function hintRows(h) {
 
 // Bought after the map, so shown below it.
 export function laterHintRows(h) {
-  return h.name_zh ? hintRow("Chinese name", `<span class="zh" lang="zh-Hans">${escapeHtml(h.name_zh)}</span>`) : "";
+  return [
+    h.name_zh ? hintRow("Chinese name", `<span class="zh" lang="zh-Hans">${escapeHtml(h.name_zh)}</span>`) : "",
+    h.name_ta ? hintRow("Tamil name", `<span class="ta" lang="ta">${escapeHtml(h.name_ta)}</span>`) : "",
+  ].join("");
 }
 
 export { codeChips };

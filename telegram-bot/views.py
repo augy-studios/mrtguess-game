@@ -11,7 +11,7 @@ from telethon import Button
 import reply as r
 from commands import COMMANDS
 
-HINT_LABELS = {2: "code", 3: "map", 4: "Chinese name", 5: "letter"}
+HINT_LABELS = {2: "code", 3: "map", 4: "Chinese name", 5: "Tamil name", 6: "letter"}
 
 REVEAL_SECONDS = 15
 
@@ -60,6 +60,9 @@ def hint_lines(view: dict) -> list[dict]:
     if "name_zh" in hints:
         zh = hints["name_zh"]
         lines.append(r.para(f"Chinese name: **{r.escape_md(zh)}**", f"Chinese name: {zh}"))
+    if "name_ta" in hints:
+        ta = hints["name_ta"]
+        lines.append(r.para(f"Tamil name: **{r.escape_md(ta)}**", f"Tamil name: {ta}"))
     return lines
 
 
@@ -259,7 +262,7 @@ def start_card(button, user_id: int, site_url: str, donation_url: str | None):
                     ),
                     r.text(
                         "Stuck? Press the hint button or send /hint. Hints come in a fixed order: the station code, such as NS19, "
-                        "a map with the station ringed, the Chinese name, then one letter at a time."
+                        "a map with the station ringed, the Chinese name, the Tamil name, then one letter at a time."
                     ),
                     r.text(
                         "Send /giveup to end the round and see the answer. A round left for an hour times out; "
@@ -276,6 +279,7 @@ def start_card(button, user_id: int, site_url: str, donation_url: str | None):
                     ["Station code hint", "-100"],
                     ["Map hint", "-150"],
                     ["Chinese name hint", "-200"],
+                    ["Tamil name hint", "-200"],
                     ["Wrong guess", "-20"],
                     ["Giving up", "0 for the round"],
                 ],

@@ -10,7 +10,8 @@ const PEERJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.m
 const PEER_PREFIX = "mrtguessr-";
 const CODE_ALPHABET = "BCDFGHJKLMNPQRSTVWXYZ23456789";
 export const CODE_LENGTH = 6;
-export const PROTOCOL_VERSION = 1;
+// 2: the Tamil name hint, tier 5, and letters at tier 6.
+export const PROTOCOL_VERSION = 2;
 const CONNECT_TIMEOUT_MS = 15000;
 
 // STUN only. Supplying `config` replaces PeerJS's default, which includes a

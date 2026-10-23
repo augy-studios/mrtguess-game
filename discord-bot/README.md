@@ -102,8 +102,8 @@ old buttons, the live cards' updates and everyone's settings, never a score.
    place and the score drops by 60.
 3. Press Guess and send a wrong answer: the same card says so. Send
    `/guess` with a wrong answer: a new card at the bottom, the old one gone.
-4. Press the hint button three times: code, then map (the picture appears
-   inside the card), then the Chinese name.
+4. Press the hint button four times: code, then map (the picture appears
+   inside the card), then the Chinese name, then the Tamil name.
 5. Guess right: the answer card, with `Add as NAME` (your Discord name),
    Another name and Play again.
 6. Another name, send a rude name (refused, only you see why), then a good one.

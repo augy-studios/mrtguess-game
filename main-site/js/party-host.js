@@ -14,6 +14,7 @@
 // reconnect to it.
 
 import { Host, generateCode, isValidCode, PROTOCOL_VERSION } from "./p2p.js";
+import { REPLAY_VERSION } from "./replay-format.js";
 import {
   DEFAULT_DIFFICULTY,
   HINT_LABELS,
@@ -621,7 +622,7 @@ export class PartyHost extends EventTarget {
     const r = this.room;
     const roster = r.roster.map((p) => ({ pid: p.pid, name: this.seat(p.pid)?.name ?? p.name }));
     return {
-      v: 1,
+      v: REPLAY_VERSION,
       kind: "party",
       at: r.started_at,
       settings: { difficulty: r.settings.difficulty, turn: r.settings.turn },

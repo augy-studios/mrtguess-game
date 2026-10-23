@@ -10,6 +10,7 @@ import { api } from "./api.js";
 import { cleanReplay, packReplay, unpackReplay } from "./replay-format.js";
 import {
   HINT_LABELS,
+  LAST_TIER,
   describeTurn,
   difficultyOf,
   gameScore,
@@ -271,7 +272,7 @@ function logLines(states, ended) {
     const who = rp.replay.players[i];
     for (const [at, kind, data] of s.events) {
       let text;
-      if (kind === "h") text = data === 5 ? `${who} bought a letter` : `${who} bought the ${HINT_LABELS[data].toLowerCase()} hint`;
+      if (kind === "h") text = data === LAST_TIER ? `${who} bought a letter` : `${who} bought the ${HINT_LABELS[data].toLowerCase()} hint`;
       else if (kind === "x") text = `${who} gave up`;
       else if (isCorrect(data, turn().station)) text = ended ? `${who} got it: ${data}` : `${who} got it`;
       else text = `${who} guessed ${data}`;

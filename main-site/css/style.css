@@ -336,6 +336,7 @@ body {
   border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
 }
 .zh { font-size: 1.3rem; }
+.ta { font-size: 1.15rem; }
 
 /* The map hint. Leaflet's own look is kept to the controls, restyled to
    the theme. */

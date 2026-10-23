@@ -14,6 +14,7 @@ the station data, is a new file with the next number.
 | `004_mrtguessr_anti_cheat.sql` | Submit refuses rounds solved in under 3 seconds, and rounds played at the same time as another on the board under the same name. |
 | `005_mrtguessr_wipe_leaderboard.sql` | Empties the leaderboard, both boards. Rounds are kept. Not safe to run again: a second run wipes everything since. |
 | `006_mrtguessr_scoring_and_replays.sql` | Rounds get a difficulty, a time limit, a letter order and an event list; `mrtguessr_replays` holds the short replay links. Rounds started before it read as expired. |
+| `007_mrtguessr_tamil_hint.sql` | Rounds get a `rules_version`, so the API can tell rounds from before the Tamil name hint (letters at tier 5) from those after (letters at 6). |
 
 `002` and `python scripts/seed_supabase.py` load the same rows; use either.
 After refreshing `main-site/data/`, `python scripts/seed_supabase.py --sql`

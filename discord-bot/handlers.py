@@ -514,7 +514,7 @@ class Game:
 
                 async def bought():
                     view = await self.hint(key, fresh())
-                    what = views.HINT_LABELS.get(view["hint_tier"], "hint")
+                    what = views.HINT_LABELS.get(view.get("bought_tier", view["hint_tier"]), "hint")
                     await interaction.edit_original_response(content=f"Spent {view.get('penalty', 0)} points on the {what}.", view=None)
 
                 await self.run_locked(key, interaction, bought)

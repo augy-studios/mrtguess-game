@@ -8,7 +8,7 @@
 // A turn is one station. What a player did in it is a list of events, each
 // [ms since the turn started, kind, data]:
 //
-//   [t, "h", tier]   bought a hint; tier 5 is one more letter
+//   [t, "h", tier]   bought a hint; tier 6 is one more letter
 //   [t, "g", text]   guessed; right or wrong is worked out from the name
 //   [t, "x"]         gave up
 //
@@ -20,7 +20,11 @@
 //   2  station codes        -100, in full: NS19, or NS24 NE6 CC1
 //   3  position on a map    -150
 //   4  Chinese name         -200
-//   5  one more letter      -60 each, up to the difficulty's share of letters
+//   5  Tamil name           -200
+//   6  one more letter      -60 each, up to the difficulty's share of letters
+//
+// Letters were tier 5 before the Tamil name came in. A version 1 replay is
+// read with them moved to 6 (js/replay-format.js).
 //
 // Letters also show on their own as the clock runs, at the same -60 each and
 // up to the same share. They come in one order per turn, shuffled when it
@@ -31,9 +35,9 @@ export const START_SCORE = 1000;
 export const LETTER_COST = 60;
 export const WRONG_GUESS_COST = 20;
 export const MIN_SCORE = 50;
-export const TIER_COST = { 2: 100, 3: 150, 4: 200, 5: LETTER_COST };
-export const LAST_TIER = 5;
-export const HINT_LABELS = { 2: "Station code", 3: "Map", 4: "Chinese name", 5: "Letter" };
+export const TIER_COST = { 2: 100, 3: 150, 4: 200, 5: 200, 6: LETTER_COST };
+export const LAST_TIER = 6;
+export const HINT_LABELS = { 2: "Station code", 3: "Map", 4: "Chinese name", 5: "Tamil name", 6: "Letter" };
 
 // Harder: the clock shows letters more slowly and stops sooner, and every
 // point counts for more. `share` is the most letters that can ever show, as
@@ -204,8 +208,10 @@ export function turnState(name, settings, events, end, t) {
     if (done || et > at) break;
     shown.push(event);
     if (kind === "h") {
+      // A letter leaves the tier where it was: an old game bought letters
+      // straight after the Chinese name, and must not pay for the Tamil one.
       if (data === LAST_TIER) bought += 1;
-      tier = Math.max(tier, Math.min(LAST_TIER, data));
+      else tier = Math.max(tier, Math.min(LAST_TIER - 1, data));
     } else if (kind === "g") {
       if (isCorrect(data, name)) done = { by: "solved", t: et };
       else wrong += 1;
@@ -275,6 +281,7 @@ export function hintsFor(station, tier) {
   // Rounded to about 100 m: enough for a dot on a map.
   if (tier >= 3) hints.position = { lat: +station.lat.toFixed(3), lon: +station.lon.toFixed(3) };
   if (tier >= 4 && station.name_zh) hints.name_zh = station.name_zh;
+  if (tier >= 5 && station.name_ta) hints.name_ta = station.name_ta;
   return hints;
 }
 

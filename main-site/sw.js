@@ -32,7 +32,7 @@
 // 4. Nothing under /api/ is ever cached. A cached round or leaderboard is a
 //    wrong answer, not a stale one.
 
-const VERSION = "mrtguessr-v8";
+const VERSION = "mrtguessr-v9";
 
 const SHELL = `mrtguessr-shell-${VERSION}`;
 

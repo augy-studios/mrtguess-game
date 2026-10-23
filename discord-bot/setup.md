@@ -13,7 +13,7 @@ and on its slash commands.
 **Description**, up to 400 characters, shown on the bot's profile:
 
 ```text
-A Singapore MRT and LRT guessing game. You see a station with its letters hidden and the colour of its line. A letter shows every 15 seconds, and hints give the station code, a map, and the Chinese name, each for a few points. Guess in as few as you can, then put your score on the public leaderboard. No sign up. Send /help for the rules.
+A Singapore MRT and LRT guessing game. You see a station with its letters hidden and the colour of its line. A letter shows every 15 seconds, and hints give the station code, a map, and the Chinese and Tamil names, each for a few points. Guess in as few as you can, then put your score on the public leaderboard. No sign up. Send /help for the rules.
 ```
 
 Upload the app icon from `main-site/SNG-512.png`.

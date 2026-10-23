@@ -97,9 +97,10 @@ appear. There is no inline mode, so no inline results.
 2. `/play`: a card with a code block mask. Wait 15 seconds: a letter appears
    in place and the score drops by 60.
 3. Send a wrong guess: a new card at the bottom saying so, the old one gone.
-4. Press the hint button three times: code, then map (the card redraws in
+4. Press the hint button four times: code, then map (the card redraws in
    place with the picture inside it, and no new message arrives), then the
-   Chinese name. Wait for a letter: the map stays on the card.
+   Chinese name, then the Tamil name. Wait for a letter: the map stays on the
+   card.
 5. Guess right: the answer card, with `Add as FIRSTNAME` (your Telegram
    first name), Another name and Play again. `/settings` shows the name as
    "(your Telegram name)".

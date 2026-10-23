@@ -11,7 +11,7 @@ import discord
 
 from commands import COMMANDS
 
-HINT_LABELS = {2: "code", 3: "map", 4: "Chinese name", 5: "letter"}
+HINT_LABELS = {2: "code", 3: "map", 4: "Chinese name", 5: "Tamil name", 6: "letter"}
 
 REVEAL_SECONDS = 15
 
@@ -93,6 +93,8 @@ def round_card(view: dict, button, user_id: int, note: str | None = None, has_ma
             embed.set_image(url="attachment://map.png")
     if "name_zh" in hints:
         embed.add_field(name="Chinese name", value=escape(hints["name_zh"]), inline=False)
+    if "name_ta" in hints:
+        embed.add_field(name="Tamil name", value=escape(hints["name_ta"]), inline=False)
 
     if view.get("expired"):
         embed.set_footer(text="This round has timed out. Give up to see the answer.")
@@ -242,6 +244,7 @@ SCORING = [
     ["Station code hint", "-100"],
     ["Map hint", "-150"],
     ["Chinese name hint", "-200"],
+    ["Tamil name hint", "-200"],
     ["Wrong guess", "-20"],
     ["Giving up", "0 for the round"],
 ]
@@ -267,7 +270,8 @@ def help_card(button, site_url: str, donation_url: str | None):
                 f"3. Every {REVEAL_SECONDS} seconds another letter shows by itself, up to half the name. "
                 "The card updates in place.",
                 "4. Stuck? Press the hint button or send /hint. Hints come in a fixed order: the station code, "
-                "such as NS19, a map with the station ringed, the Chinese name, then one letter at a time.",
+                "such as NS19, a map with the station ringed, the Chinese name, the Tamil name, then one letter "
+                "at a time.",
                 "5. Send /giveup to end the round and see the answer. A round left for an hour times out; "
                 "give up on it to see what it was.",
             ]

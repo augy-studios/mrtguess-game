@@ -26,13 +26,19 @@ import {
   shuffle,
   turnMs,
   turnState,
+  LAST_TIER,
 } from "../../js/rules.js";
+import { REPLAY_VERSION } from "../../js/replay-format.js";
 
 export { START_SCORE };
 
 // A guess sent in the last moment of a timed round still counts, as made at
 // the moment time ran out.
 const GRACE_MS = 2000;
+
+// mrtguessr_rounds.rules_version. Rounds at 1 are from before the Tamil name
+// hint, and bought letters as tier 5; loadRound() moves them to 6.
+const RULES_VERSION = 2;
 
 const STATIONS_TTL_MS = 60 * 60 * 1000;
 let stationsCache = null;
@@ -72,6 +78,7 @@ export function newRoundRow(station, clientKey, body) {
     station_id: station.id,
     client_key: clientKey,
     hint_tier: 1,
+    rules_version: RULES_VERSION,
     score: START_SCORE,
     difficulty: cleanDifficulty(body.difficulty),
     turn_seconds: cleanTurn(body.turn_seconds),
@@ -126,14 +133,15 @@ function roomForEvents(round) {
   }
 }
 
-// Buys the next rung. Throws when there is nothing left to buy.
+// Buys the next rung, and returns it as { tier, penalty }. Throws when there
+// is nothing left to buy.
 export function applyHint(round, station, now = Date.now()) {
   roomForEvents(round);
   const { s } = stateOf(round, station, now);
   const next = nextHint(s.tier, s.revealed, station.name_en, round.difficulty);
   if (!next) throw new HttpError(409, "no_more_hints", "There are no more hints for this station.");
   record(round, station, now, ["h", next.tier]);
-  return next.penalty;
+  return next;
 }
 
 export function applyGuess(round, station, guess, now = Date.now()) {
@@ -226,7 +234,7 @@ export function soloReplay(round, station, name) {
   const settings = settingsOf(round);
   const { s, limit } = stateOf(round, station, Date.now());
   return {
-    v: 1,
+    v: REPLAY_VERSION,
     kind: "solo",
     at: round.created_at,
     settings,
@@ -244,14 +252,25 @@ export function soloReplay(round, station, name) {
 
 export const replayable = (round) => finished(round) && !legacy(round);
 
-const WRITABLE = ["hint_tier", "revealed_positions", "score", "solved", "gave_up", "finished_at", "letters_bought", "events"];
+const WRITABLE = [
+  "hint_tier", "revealed_positions", "score", "solved", "gave_up", "finished_at", "letters_bought", "events", "rules_version",
+];
+
+// A round from before the Tamil name hint, in today's tier numbers. Its
+// points come out the same; the next write stores it this way.
+function upgrade(round) {
+  if (round.rules_version >= RULES_VERSION) return round;
+  round.events = (round.events ?? []).map((e) => (e[1] === "h" && e[2] === 5 ? [e[0], "h", LAST_TIER] : e));
+  round.rules_version = RULES_VERSION;
+  return round;
+}
 
 export async function loadRound(id, clientKey) {
   const rows = await rest(`mrtguessr_rounds?id=eq.${id}&select=*`);
   const round = rows?.[0];
   // Someone else's round reads as no round at all.
   if (!round || round.client_key !== clientKey) throw new HttpError(404, "round_not_found");
-  return round;
+  return upgrade(round);
 }
 
 // Load, change, write back only if nobody else wrote in between; otherwise

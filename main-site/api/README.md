@@ -21,7 +21,7 @@ A round is only visible to the key that started it.
 |---|---|---|
 | `POST /api/round/new` | `client_key`, `difficulty?`, `turn_seconds?` | the round view |
 | `POST /api/round/guess` | `round_id, client_key, guess` | `correct` plus the round view |
-| `POST /api/round/hint` | `round_id, client_key` | `penalty` plus the round view |
+| `POST /api/round/hint` | `round_id, client_key` | `penalty` and `bought_tier` plus the round view |
 | `POST /api/round/state` | `round_id, client_key` | the round view, with due letters revealed |
 | `POST /api/round/giveup` | `round_id, client_key` | the round view, with `answer` |
 | `POST /api/leaderboard/submit` | `round_id, name` | `name, rank, best_score, total, rounds, total_rank` |
@@ -125,7 +125,8 @@ time, so reading a round writes nothing.
 | Tier 2, station codes in full (`NS19`; every code at an interchange) | -100 |
 | Tier 3, position on a blank map | -150 |
 | Tier 4, Chinese name | -200 |
-| Tier 5, one more letter | -60 each |
+| Tier 5, Tamil name | -200 |
+| Tier 6, one more letter | -60 each |
 | A letter from the clock, every 15 s | -60 each |
 | Wrong guess | -20 |
 | Floor while playing | 50 |
@@ -143,6 +144,10 @@ rounded:
 | 1 minute | | | × 1.2 |
 | 30 seconds | | | × 1.5 |
 | Speed, with any limit | | | × 1 to × 1.5, by the share of time left |
+
+`hint_tier` is the last named hint bought; buying a letter leaves it there.
+Rounds stored before migration 007 had letters at tier 5 and are read with
+them at 6, for the same points.
 
 Letters from the clock and hints together stop at the difficulty's share. A
 timed round runs out at its limit, with 2 s of grace for a guess already on

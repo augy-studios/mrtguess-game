@@ -4,7 +4,7 @@
 // points its events do not add up to.
 //
 // {
-//   v: 1,
+//   v: 2,
 //   kind: "solo" | "party",
 //   at: ISO time the game started,
 //   settings: { difficulty, turn },          turn in seconds, or null
@@ -18,10 +18,13 @@
 // }
 //
 // Events are js/rules.js's: [t, "h", tier], [t, "g", text], [t, "x"].
+//
+// Version 1 is from before the Tamil name hint, when a letter was tier 5. It
+// is read as version 2 with those moved to tier 6.
 
-import { MAX_EVENTS, cleanDifficulty, cleanTurn, turnMs } from "./rules.js";
+import { LAST_TIER, MAX_EVENTS, cleanDifficulty, cleanTurn, turnMs } from "./rules.js";
 
-export const REPLAY_VERSION = 1;
+export const REPLAY_VERSION = 2;
 export const MAX_PLAYERS = 8;
 export const MAX_TURNS = 200;
 const MAX_LETTERS = 64;
@@ -38,7 +41,7 @@ function int(value, min, max) {
   return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
 }
 
-function cleanEvents(list, end) {
+function cleanEvents(list, end, v) {
   if (!Array.isArray(list)) return null;
   const out = [];
   let last = 0;
@@ -47,7 +50,10 @@ function cleanEvents(list, end) {
     // In time order, and inside the turn.
     const t = int(e[0], last, end);
     last = t;
-    if (e[1] === "h") out.push([t, "h", int(e[2], 2, 5)]);
+    if (e[1] === "h") {
+      const tier = int(e[2], 2, v === 1 ? 5 : LAST_TIER);
+      out.push([t, "h", v === 1 && tier === 5 ? LAST_TIER : tier]);
+    }
     else if (e[1] === "g") {
       const text = cleanText(e[2], 64);
       if (text) out.push([t, "g", text]);
@@ -59,7 +65,7 @@ function cleanEvents(list, end) {
 // A replay from anywhere (a link, the API, a party host) made safe to use,
 // or null if it is not one.
 export function cleanReplay(raw) {
-  if (!raw || typeof raw !== "object" || raw.v !== REPLAY_VERSION) return null;
+  if (!raw || typeof raw !== "object" || (raw.v !== 1 && raw.v !== REPLAY_VERSION)) return null;
   const kind = raw.kind === "solo" || raw.kind === "party" ? raw.kind : null;
   if (!kind) return null;
 
@@ -77,7 +83,7 @@ export function cleanReplay(raw) {
     if (!station) continue;
     const end = int(t.end, 0, limit);
     const order = [...new Set((Array.isArray(t.order) ? t.order : []).map((x) => int(x, 0, MAX_LETTERS - 1)))].slice(0, MAX_LETTERS);
-    const events = players.map((_, i) => cleanEvents(t.events?.[i], end));
+    const events = players.map((_, i) => cleanEvents(t.events?.[i], end, raw.v));
     turns.push({ station, order, end, events });
   }
   if (!turns.length) return null;
